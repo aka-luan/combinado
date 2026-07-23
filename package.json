@@ -1,0 +1,32 @@
+{
+  "name": "combinado",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/generate-icons.mjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/generate-icons.mjs",
+    "build": "next build",
+    "postbuild": "node scripts/generate-sw.mjs",
+    "start": "serve out",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test": "pnpm run typecheck && pnpm run test:unit && pnpm run build && pnpm run test:e2e"
+  },
+  "dependencies": {
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "serve": "^14.2.4",
+    "typescript": "^5.7.0"
+  }
+}

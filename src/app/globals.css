@@ -1,0 +1,30 @@
+:root {
+  color-scheme: light dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: light-dark(#ffffff, #0f172a);
+  color: light-dark(#0f172a, #f8fafc);
+}
+
+main {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+[data-offline-notice] {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
