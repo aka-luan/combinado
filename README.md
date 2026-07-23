@@ -59,13 +59,15 @@ trocar de adulto) estão em [docs/runbook-auth.md](./docs/runbook-auth.md).
 O app é exportado como site estático (`next build` com `output: "export"`) e publicado no
 Cloudflare Pages (plano Free), hostname estável `*.pages.dev`.
 
-1. `pnpm run build` gera `out/`.
-2. No Cloudflare Pages, crie um projeto Git conectado a este repositório com:
-   - Build command: `pnpm run build`
-   - Output directory: `out`
-   - Variável de build `NEXT_PUBLIC_APP_ENV=production` (já default via `.env.production`)
-3. Alternativamente, publique manualmente com a Cloudflare CLI autenticada:
-   `pnpm exec wrangler pages deploy out --project-name combinado`.
+`.github/workflows/ci.yml` faz o deploy automaticamente: todo push em `main` que passa em
+typecheck/testes/build roda `wrangler pages deploy out --project-name=combinado`. Requer
+dois secrets no repositório GitHub (Settings → Secrets and variables → Actions):
+
+- `CLOUDFLARE_API_TOKEN` — token com permissão de "Cloudflare Pages: Edit" para a conta.
+- `CLOUDFLARE_ACCOUNT_ID` — Account ID do Cloudflare.
+
+Deploy manual (sem esperar o CI), com a Cloudflare CLI autenticada:
+`pnpm exec wrangler pages deploy out --project-name combinado`.
 
 Nenhuma credencial do Cloudflare ou do Supabase é armazenada neste repositório.
 
