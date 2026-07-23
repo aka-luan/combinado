@@ -1,0 +1,22 @@
+# Dependencies and builds
+node_modules/
+.next/
+out/
+dist/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Tooling and local state
+.DS_Store
+.scratch/
+*.log
+
+# Supabase local development
+supabase/.branches/
+supabase/.temp/
