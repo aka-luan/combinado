@@ -17,6 +17,7 @@
     "test": "pnpm run typecheck && pnpm run test:unit && pnpm run build && pnpm run test:e2e"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.8",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

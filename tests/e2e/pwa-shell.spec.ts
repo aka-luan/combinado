@@ -1,5 +1,14 @@
 import { test, expect } from "@playwright/test";
 
+test("without Supabase credentials, the app shows a clear config-missing state instead of a broken login", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await expect(page.locator("[data-auth-config-missing]")).toBeVisible();
+  await expect(page.locator("[data-login-step]")).toHaveCount(0);
+});
+
 test("manifest is linked and installable metadata is present", async ({ page }) => {
   await page.goto("/");
 

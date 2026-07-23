@@ -43,6 +43,17 @@ não sensível de cada ambiente; `.env.example` documenta o que precisa existir.
 (Supabase, VAPID, etc.) nunca são lidos pelo frontend estático e não pertencem a este
 repositório — ver seção 15 do [PRD](./PRD.md).
 
+`NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` são as únicas credenciais do
+Supabase que o cliente recebe (públicas por design). Sem elas, o app mostra um estado
+"não configurado" em vez de uma tela de login quebrada.
+
+## Autenticação
+
+Login por OTP de seis dígitos enviado por Gmail SMTP dedicado, verificado dentro do PWA
+instalado — sem cadastro público e sem Magic Link (ver seção 11 do [PRD](./PRD.md)).
+Procedimentos administrativos (provisionar os dois adultos, recuperar acesso sem Gmail,
+trocar de adulto) estão em [docs/runbook-auth.md](./docs/runbook-auth.md).
+
 ## Deploy
 
 O app é exportado como site estático (`next build` com `output: "export"`) e publicado no
