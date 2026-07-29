@@ -60,11 +60,16 @@ O app é exportado como site estático (`next build` com `output: "export"`) e p
 Cloudflare Pages (plano Free), hostname estável `*.pages.dev`.
 
 `.github/workflows/ci.yml` faz o deploy automaticamente: todo push em `main` que passa em
-typecheck/testes/build roda `wrangler pages deploy out --project-name=combinado`. Requer
-dois secrets no repositório GitHub (Settings → Secrets and variables → Actions):
+typecheck/testes/build roda `wrangler pages deploy out --project-name=combinado`. O build
+do Actions embute `NEXT_PUBLIC_*` no bundle estático a partir de secrets do repositório —
+variáveis do painel Cloudflare Pages **não** entram nesse caminho. Requer secrets no
+GitHub (Settings → Secrets and variables → Actions):
 
 - `CLOUDFLARE_API_TOKEN` — token com permissão de "Cloudflare Pages: Edit" para a conta.
 - `CLOUDFLARE_ACCOUNT_ID` — Account ID do Cloudflare.
+- `NEXT_PUBLIC_SUPABASE_URL` — URL pública do projeto Supabase.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon/publishable key (pública por design; ainda assim
+  fica fora do git e só entra no build via CI).
 
 Deploy manual (sem esperar o CI), com a Cloudflare CLI autenticada:
 `pnpm dlx wrangler@4 pages deploy out --project-name combinado`.
