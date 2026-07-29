@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lesson 1 — OTP is not the session</title>
+    <link rel="stylesheet" href="../assets/lesson.css" />
+  </head>
+  <body>
+    <main class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">Lesson 0001 · Email OTP</p>
+        <h1>OTP is not the session</h1>
+        <p class="lede">
+          You already know session cookies keep someone logged in. Today’s win: see where a
+          one-time code stops and the session begins.
+        </p>
+      </header>
+
+      <h2>One idea</h2>
+      <p>
+        An <strong>OTP</strong> is a short-lived proof used at login. A
+        <strong>session secret</strong> is what the server issues <em>after</em> that proof succeeds
+        so later requests stay authenticated.
+        <span class="cite"
+          >NIST calls the latter a
+          <a href="https://pages.nist.gov/800-63-4/sp800-63b/authenticators/">session secret</a>;
+          OWASP requires OTPs to be
+          <a href="https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html"
+            >short-lived and single-use</a
+          >.</span
+        >
+      </p>
+
+      <div class="diagram">you          app           auth server        email
+ |            |                |                 |
+ |-- email -->|                |                 |
+ |            |-- request OTP->|                 |
+ |            |                |-- send code --->|
+ |            |                |                 |
+ |&lt;- "check email" -----------|                 |
+ |            |                |                 |
+ |-- 6 digits ----------------&gt;|                 |
+ |            |-- verify OTP --&gt;|                 |
+ |            |&lt;- session -----|                 |
+ |            |  (cookie/token)|                 |
+ |            |                |                 |
+ |==== later requests use SESSION, not the code =====&gt;</div>
+
+      <div class="callout">
+        <strong>Combinado hook</strong>
+        Issue #2 follows exactly this: <code>signInWithOtp</code> sends the code;
+        <code>verifyOtp</code> returns a session; the PWA then persists that session. The digits
+        never become the long-term credential.
+        <span class="cite"
+          >— <a href="https://supabase.com/docs/guides/auth/auth-email-passwordless">Supabase passwordless guide</a></span
+        >
+      </div>
+
+      <h2>Why the split matters</h2>
+      <ul>
+        <li>
+          <strong>OTP dies fast</strong> (minutes). Guessing a 6-digit code is only dangerous if you
+          can try forever — so TTL + attempt limits matter.
+        </li>
+        <li>
+          <strong>Session lasts</strong> (hours/days, with refresh). That’s the cookie world you
+          already know: continuity without retyping a code every request.
+        </li>
+        <li>
+          If an app “logged you in” by storing the OTP itself, a leaked inbox screenshot could
+          impersonate you for as long as that value lived — the wrong lifetime for the wrong job.
+        </li>
+      </ul>
+
+      <h2>Check yourself</h2>
+
+      <div
+        class="quiz"
+        data-answer="0"
+        data-ok="Yes — verify creates the session; the code’s job is done."
+        data-bad="Not quite. After verify, later requests use the session — not the OTP."
+      >
+        <h3>1. After a correct OTP verify, what should later requests send?</h3>
+        <div class="quiz-options">
+          <button type="button">session token</button>
+          <button type="button">otp plaintext</button>
+        </div>
+        <p class="quiz-feedback" aria-live="polite"></p>
+      </div>
+
+      <div
+        class="quiz"
+        data-answer="1"
+        data-ok="Right — OTP is short-lived proof; the session is the long-lived credential."
+        data-bad="Remember: OTP proves you once; the session keeps you in."
+      >
+        <h3>2. Which statement matches the model?</h3>
+        <div class="quiz-options">
+          <button type="button">OTP replaces cookies</button>
+          <button type="button">OTP unlocks session</button>
+        </div>
+        <p class="quiz-feedback" aria-live="polite"></p>
+      </div>
+
+      <div
+        class="quiz"
+        data-answer="0"
+        data-ok="Correct — short TTL shrinks the guess / inbox-leak window."
+        data-bad="Think attack window: long-lived codes are easier to abuse if leaked."
+      >
+        <h3>3. Why give an email OTP a short lifetime?</h3>
+        <div class="quiz-options">
+          <button type="button">few minutes</button>
+          <button type="button">many months</button>
+        </div>
+        <p class="quiz-feedback" aria-live="polite"></p>
+      </div>
+
+      <h2>Primary source</h2>
+      <p>
+        Read the short section
+        <a href="https://supabase.com/docs/guides/auth/auth-email-passwordless#with-otp">With OTP</a>
+        in Supabase’s passwordless guide — especially step 2, where verify returns a
+        <code>session</code>. That’s the same seam this lesson names.
+      </p>
+
+      <div class="ask-teacher">
+        Stuck or curious? Ask follow-up questions in chat — I’m your teacher for this track. Next
+        up (when you’re ready): the request → verify dance and why “send code” alone never logs you
+        in.
+      </div>
+
+      <p class="footer-nav">
+        <a href="../reference/glossary.html">Glossary</a>
+        <a href="../RESOURCES.md">Resources</a>
+        <a href="../MISSION.md">Mission</a>
+      </p>
+    </main>
+    <script src="../assets/quiz.js"></script>
+  </body>
+</html>

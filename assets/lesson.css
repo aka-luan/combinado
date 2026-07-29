@@ -1,0 +1,201 @@
+:root {
+  --ink: #1a1a1a;
+  --muted: #5c5c5c;
+  --paper: #f7f4ef;
+  --rule: #d9d2c5;
+  --accent: #0b5f4a;
+  --accent-soft: #d8efe7;
+  --wrong: #7a2e2e;
+  --wrong-soft: #f3e0e0;
+  --right: #0b5f4a;
+  --right-soft: #d8efe7;
+  --mono: "IBM Plex Mono", "ui-monospace", "Cascadia Code", monospace;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: "IBM Plex Sans", "Source Sans 3", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  font-family: var(--serif);
+}
+
+.lesson {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+header.lesson-head {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.eyebrow {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: 1.85rem;
+  line-height: 1.2;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.lede {
+  font-size: 1.05rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+h2 {
+  font-family: var(--sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 2rem 0 0.75rem;
+}
+
+p,
+li {
+  margin: 0 0 0.85rem;
+}
+
+ul,
+ol {
+  padding-left: 1.2rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.cite {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.diagram {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  background: #fff;
+  border: 1px solid var(--rule);
+  padding: 1rem;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 1rem 0 1.25rem;
+}
+
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 0.85rem 1rem;
+  margin: 1.25rem 0;
+  font-family: var(--sans);
+  font-size: 0.95rem;
+}
+
+.callout strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.quiz {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--rule);
+  background: #fff;
+}
+
+.quiz h3 {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem;
+}
+
+.quiz-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.quiz button {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.quiz button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.quiz button[data-state="correct"] {
+  background: var(--right-soft);
+  border-color: var(--right);
+}
+
+.quiz button[data-state="incorrect"] {
+  background: var(--wrong-soft);
+  border-color: var(--wrong);
+}
+
+.quiz button:disabled {
+  cursor: default;
+}
+
+.quiz-feedback {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+  min-height: 1.4em;
+}
+
+.quiz-feedback[data-kind="ok"] {
+  color: var(--right);
+}
+
+.quiz-feedback[data-kind="bad"] {
+  color: var(--wrong);
+}
+
+.footer-nav {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.footer-nav a {
+  margin-right: 1rem;
+}
+
+.ask-teacher {
+  margin-top: 1.5rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--rule);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+}

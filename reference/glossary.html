@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OTP glossary</title>
+    <link rel="stylesheet" href="../assets/lesson.css" />
+  </head>
+  <body>
+    <main class="lesson">
+      <header class="lesson-head">
+        <p class="eyebrow">Reference</p>
+        <h1>OTP glossary</h1>
+        <p class="lede">Compressed terms for this course. Prefer these words in every lesson.</p>
+      </header>
+
+      <h2>OTP (one-time password / code)</h2>
+      <p>
+        A short-lived secret used <em>once</em> to prove control of a channel (often email or phone)
+        during login. It is not what keeps you logged in afterward.
+      </p>
+
+      <h2>Session secret</h2>
+      <p>
+        The credential issued <em>after</em> successful authentication that proves continuity of the
+        logged-in state (cookie, refresh token, etc.). You already know this via session cookies.
+        <span class="cite"
+          >— <a href="https://pages.nist.gov/800-63-4/sp800-63b/authenticators/">NIST SP 800-63B-4</a></span
+        >
+      </p>
+
+      <h2>Request → verify</h2>
+      <p>
+        Two-step passwordless dance: (1) ask the server to send a code; (2) submit the code to create
+        a session. Sending alone does not log anyone in.
+      </p>
+
+      <h2>TTL (time-to-live)</h2>
+      <p>
+        How long a code remains acceptable. Short TTL limits the window for guessing or inbox
+        snooping.
+        <span class="cite"
+          >— <a href="https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html">OWASP MFA cheat sheet</a></span
+        >
+      </p>
+
+      <h2>Rate limit</h2>
+      <p>
+        Caps on how often codes can be requested or guessed. Makes brute-force of a 6-digit space
+        impractical.
+      </p>
+
+      <h2>shouldCreateUser: false</h2>
+      <p>
+        Supabase option: refuse to auto-signup unknown emails on OTP request. Combinado’s closed
+        household depends on this plus admin provisioning.
+        <span class="cite"
+          >— <a href="https://supabase.com/docs/guides/auth/auth-email-passwordless">Supabase passwordless docs</a></span
+        >
+      </p>
+
+      <h2>Magic Link</h2>
+      <p>
+        Same underlying email auth path as OTP, but the email carries a clickable URL instead of a
+        typed code. Combinado rejects this for in-PWA login.
+      </p>
+
+      <p class="footer-nav">
+        <a href="../lessons/0001-otp-is-not-the-session.html">Lesson 1</a>
+        <a href="../RESOURCES.md">Resources</a>
+      </p>
+    </main>
+  </body>
+</html>
