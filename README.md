@@ -67,7 +67,11 @@ dois secrets no repositório GitHub (Settings → Secrets and variables → Acti
 - `CLOUDFLARE_ACCOUNT_ID` — Account ID do Cloudflare.
 
 Deploy manual (sem esperar o CI), com a Cloudflare CLI autenticada:
-`pnpm exec wrangler pages deploy out --project-name combinado`.
+`pnpm dlx wrangler@4 pages deploy out --project-name combinado`.
+
+Se o projeto Pages estiver ligado ao Git, use o preset **Next.js (Static HTML
+Export)** (`npx next build` → diretório `out`). O preset Next.js padrão
+(`@cloudflare/next-on-pages`) não é necessário para este export estático.
 
 Nenhuma credencial do Cloudflare ou do Supabase é armazenada neste repositório.
 

@@ -1,6 +1,8 @@
 # Dependencies and builds
 node_modules/
+.pnpm-store/
 .next/
+.vercel/
 out/
 dist/
 coverage/
