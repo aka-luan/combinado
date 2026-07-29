@@ -3,6 +3,10 @@ import { test, expect } from "@playwright/test";
 test("without Supabase credentials, the app shows a clear config-missing state instead of a broken login", async ({
   page,
 }) => {
+  // This test is only meaningful when the build has no Supabase env vars.
+  // In CI the production build always includes them, so skip there.
+  test.skip(!!process.env.CI, "Supabase is configured in CI builds");
+
   await page.goto("/");
 
   await expect(page.locator("[data-auth-config-missing]")).toBeVisible();
@@ -66,7 +70,7 @@ test("shell opens offline after one successful load and reports the offline stat
   await context.setOffline(true);
   await page.reload();
 
-  await expect(page.locator("h1")).toHaveText("Combinado");
+  await expect(page.locator("h1").first()).toHaveText("Combinado");
   await expect(page.locator("[data-offline-notice]")).toBeVisible();
 
   await context.setOffline(false);
