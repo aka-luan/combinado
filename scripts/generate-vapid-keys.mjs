@@ -52,8 +52,9 @@ const vapidKeys = {
 console.log("# Put this in the Cloudflare/CI build env and .env.* (public):");
 console.log(`NEXT_PUBLIC_VAPID_PUBLIC_KEY=${b64url(uncompressed)}`);
 console.log("");
-console.log("# Prefer this single Supabase Edge Function secret (JSON):");
-console.log(`VAPID_KEYS='${JSON.stringify(vapidKeys)}'`);
+console.log("# Prefer this single Supabase Edge Function secret.");
+console.log("# Paste ONLY the JSON below into the secret value (no quotes, no VAPID_KEYS=):");
+console.log(JSON.stringify(vapidKeys));
 console.log("");
 console.log("# Alternate pair of Supabase secrets (base64url):");
 console.log(`VAPID_PUBLIC_KEY=${b64url(uncompressed)}`);

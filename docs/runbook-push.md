@@ -10,11 +10,14 @@ CI — nunca neste repositório.
 2. Copie `NEXT_PUBLIC_VAPID_PUBLIC_KEY` para o secret/variável de build do
    GitHub Actions (e localmente em `.env.development` se for testar).
 3. No Supabase → Edge Functions → Secrets, defina:
-   - `VAPID_KEYS` — JSON impresso pelo script (preferido); **ou**
-     `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` em base64url;
+   - `VAPID_KEYS` — **somente** o JSON bruto do script (sem aspas e sem
+     `VAPID_KEYS=`). Valor típico começa com `{"publicKey":...`;
+   - **ou** `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` em base64url;
    - `VAPID_SUBJECT` — `mailto:` do contato administrativo;
    - `PUSH_CRON_SECRET` — string longa aleatória para o Cron.
-4. `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já são injetados nas
+4. A chave pública no GitHub e o `VAPID_KEYS` no Supabase devem ser do
+   **mesmo** `generate-vapid-keys` — regenerar um lado sem o outro quebra o push.
+5. `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já são injetados nas
    Functions pelo projeto.
 
 ## Schema e Function

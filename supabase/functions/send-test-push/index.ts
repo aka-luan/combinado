@@ -39,9 +39,6 @@ function vapidBase64ToJwk(publicKey: string, privateKey: string) {
       crv: "P-256" as const,
       x,
       y,
-      key_ops: ["verify"],
-      ext: true,
-      alg: "ES256",
     },
     privateKey: {
       kty: "EC" as const,
@@ -49,27 +46,79 @@ function vapidBase64ToJwk(publicKey: string, privateKey: string) {
       x,
       y,
       d: dB64,
-      key_ops: ["sign"],
-      ext: true,
-      alg: "ES256",
+    },
+  };
+}
+
+/** Secrets UI often gets shell-quoted paste from the generator (`'{...}'`). */
+function normalizeSecret(value: string): string {
+  let v = value.trim();
+  if (
+    (v.startsWith("'") && v.endsWith("'")) ||
+    (v.startsWith('"') && v.endsWith('"'))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  if (v.startsWith("VAPID_KEYS=")) {
+    v = v.slice("VAPID_KEYS=".length).trim();
+    if (
+      (v.startsWith("'") && v.endsWith("'")) ||
+      (v.startsWith('"') && v.endsWith('"'))
+    ) {
+      v = v.slice(1, -1).trim();
+    }
+  }
+  return v;
+}
+
+function sanitizeExportedVapidKeys(raw: unknown) {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("vapid_keys_not_object");
+  }
+  const { publicKey, privateKey } = raw as {
+    publicKey?: JsonWebKey;
+    privateKey?: JsonWebKey;
+  };
+  if (!publicKey || !privateKey) {
+    throw new Error("vapid_keys_missing_pair");
+  }
+  // Web Crypto is picky: keep only the EC fields negrel/importKey need.
+  return {
+    publicKey: {
+      kty: publicKey.kty,
+      crv: publicKey.crv,
+      x: publicKey.x,
+      y: publicKey.y,
+    },
+    privateKey: {
+      kty: privateKey.kty,
+      crv: privateKey.crv,
+      x: privateKey.x,
+      y: privateKey.y,
+      d: privateKey.d,
     },
   };
 }
 
 async function loadVapidKeys(): Promise<CryptoKeyPair> {
-  const json = Deno.env.get("VAPID_KEYS");
-  if (json) {
-    return await webpush.importVapidKeys(JSON.parse(json), { extractable: true });
+  const raw = Deno.env.get("VAPID_KEYS");
+  if (raw) {
+    const normalized = normalizeSecret(raw);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(normalized);
+    } catch {
+      throw new Error("vapid_keys_invalid_json");
+    }
+    return await webpush.importVapidKeys(sanitizeExportedVapidKeys(parsed));
   }
 
-  const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY");
-  const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY");
+  const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY")?.trim();
+  const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY")?.trim();
   if (!vapidPublic || !vapidPrivate) {
     throw new Error("missing_vapid");
   }
-  return await webpush.importVapidKeys(vapidBase64ToJwk(vapidPublic, vapidPrivate), {
-    extractable: true,
-  });
+  return await webpush.importVapidKeys(vapidBase64ToJwk(vapidPublic, vapidPrivate));
 }
 
 function authorize(req: Request): boolean {
@@ -107,8 +156,11 @@ Deno.serve(async (req) => {
   let vapidKeys: CryptoKeyPair;
   try {
     vapidKeys = await loadVapidKeys();
-  } catch {
-    return new Response(JSON.stringify({ error: "misconfigured_vapid" }), { status: 500 });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : "import_failed";
+    return new Response(JSON.stringify({ error: "misconfigured_vapid", reason }), {
+      status: 500,
+    });
   }
 
   const appServer = await webpush.ApplicationServer.new({
@@ -133,11 +185,22 @@ Deno.serve(async (req) => {
     url: "/",
   });
 
-  const results: { id: string; status: number | string }[] = [];
+  // Public by design — returned on failure so we can confirm it matches the
+  // NEXT_PUBLIC_VAPID_PUBLIC_KEY the PWA used when subscribing.
+  const serverVapidPublicKey = await webpush.exportApplicationServerKey(vapidKeys);
+
+  const results: {
+    id: string;
+    status: number | string;
+    detail?: string;
+    endpointHost?: string;
+  }[] = [];
   const staleIds: string[] = [];
 
   for (const row of (rows ?? []) as SubscriptionRow[]) {
+    let endpointHost: string | undefined;
     try {
+      endpointHost = new URL(row.endpoint).host;
       const subscriber = appServer.subscribe({
         endpoint: row.endpoint,
         keys: { p256dh: row.p256dh, auth: row.auth },
@@ -146,17 +209,27 @@ Deno.serve(async (req) => {
         ttl: 30 * 60,
         urgency: webpush.Urgency.Normal,
       });
-      results.push({ id: row.id, status: "sent" });
+      results.push({ id: row.id, status: "sent", endpointHost });
     } catch (err) {
       const response =
         err instanceof webpush.PushMessageError ? err.response : null;
       const status = response?.status ?? "error";
+      let detail: string | undefined;
+      if (response) {
+        try {
+          detail = (await response.text()).slice(0, 500);
+        } catch {
+          detail = response.statusText;
+        }
+      } else if (err instanceof Error) {
+        detail = err.message;
+      }
 
       // 404/410 mean the endpoint is permanently gone (PRD §10.4).
       if (status === 404 || status === 410 || (err instanceof webpush.PushMessageError && err.isGone())) {
         staleIds.push(row.id);
       }
-      results.push({ id: row.id, status });
+      results.push({ id: row.id, status, detail, endpointHost });
     }
   }
 
@@ -168,6 +241,7 @@ Deno.serve(async (req) => {
     JSON.stringify({
       attempted: results.length,
       removed: staleIds.length,
+      serverVapidPublicKey,
       results,
     }),
     { headers: { "Content-Type": "application/json" } },
