@@ -48,11 +48,29 @@ autenticado sem membership não lê nem grava dados da casa.
    `household_id`.
 4. Não apagar registros históricos do adulto substituído.
 
-## Semeadura de rotina semanal (M2 / issue #5)
+## Rotina semanal e agenda (M2 / issues #5 e #16)
 
-Aplicar também `20260730160000_agenda_snapshot.sql`. Com o household e pelo menos
-uma criança ativos, semear uma rotina **no SQL Editor** (service role) — o app
-ainda não escreve rotinas (isso é M5):
+Aplicar também `20260730160000_agenda_snapshot.sql` e
+`20260730170000_create_weekly_routine.sql`.
+
+### Caminho dos adultos (PWA)
+
+Com o household bootstrapado, o primeiro adulto configura a casa **no app**:
+
+1. Sem criança ativa, Hoje mostra `Configurar casa` e aponta para Configurações.
+2. Em Configurações → crianças, cadastrar ao menos uma criança (CRUD existente).
+3. Em Configurações → rotinas semanais, criar uma rotina (create-only, campos §8.5).
+4. Voltar a Hoje: `household_agenda_snapshot` deriva a ocorrência do dia quando a
+   rotina começa hoje e o weekday bate — sem semear SQL no dia a dia.
+
+A RPC autenticada é `create_weekly_routine` (ligada a `current_household_id()`).
+Edição, versionamento, exceções e arquivo de rotinas ficam em tickets posteriores
+(#9 / #10). Rotina informativa (sem confirmação) não pode ter responsável.
+
+### Semente SQL (só testes / service role)
+
+`seed_weekly_routine` **não** é concedida a `authenticated`. Use só em testes
+automatizados ou, excepcionalmente, no SQL Editor com service role:
 
 ```sql
 -- Substitua HOUSEHOLD_ID e CHILD_ID (ou use target_kind 'casa' com child null).
