@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Applies auth stub + migrations against DATABASE_URL (default local CI Postgres)
- * and runs tests/sql/rls_household.sql plus tests/sql/agenda_snapshot.sql.
+ * and runs tests/sql/rls_household.sql, agenda_snapshot.sql, and weekly_routine_create.sql.
  *
  * Usage:
  *   DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres node scripts/run-rls-tests.mjs
@@ -50,10 +50,19 @@ function psql(file) {
   }
 }
 
+function psqlSql(sql) {
+  const result = spawnSync("psql", [databaseUrl, "-v", "ON_ERROR_STOP=1", "-c", sql], {
+    encoding: "utf8",
+  });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
 function psqlGrant() {
   // Migration already grants production privileges; re-apply for idempotent local runs
   // and ensure anon can attempt selects under RLS in the stub environment.
-  const sql = `
+  psqlSql(`
 grant select on all tables in schema public to authenticated, anon;
 grant insert, update on table public.children to authenticated;
 revoke delete on table public.children from authenticated;
@@ -62,14 +71,18 @@ grant execute on function public.household_agenda_snapshot(timestamptz) to authe
 grant execute on function public.household_timezone() to authenticated;
 grant execute on function public.local_date_in_household(timestamptz) to authenticated;
 grant execute on function public.occurrence_key(text, uuid, date, text) to authenticated;
-`;
-  const result = spawnSync("psql", [databaseUrl, "-v", "ON_ERROR_STOP=1", "-c", sql], {
-    encoding: "utf8",
-  });
-  if (result.stdout) process.stdout.write(result.stdout);
-  if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status !== 0) process.exit(result.status ?? 1);
+grant execute on function public.create_weekly_routine(text, text, uuid, smallint[], text, boolean, uuid, date, date) to authenticated;
+`);
 }
+
+// Fresh schemas so migrations are not blocked by leftover policies from prior runs.
+psqlSql(`
+drop schema if exists public cascade;
+create schema public;
+grant all on schema public to postgres;
+grant all on schema public to public;
+drop schema if exists auth cascade;
+`);
 
 psql(join(root, "tests/sql/auth_stub.sql"));
 
@@ -85,4 +98,5 @@ for (const name of migrations) {
 psqlGrant();
 psql(join(root, "tests/sql/rls_household.sql"));
 psql(join(root, "tests/sql/agenda_snapshot.sql"));
-console.log("RLS + agenda snapshot tests OK");
+psql(join(root, "tests/sql/weekly_routine_create.sql"));
+console.log("RLS + agenda snapshot + weekly routine create tests OK");

@@ -6,10 +6,11 @@ import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { listChildren } from "@/lib/household/children";
 import { HOUSEHOLD_CHANGED_EVENT } from "@/lib/household/events";
 import { partitionChildren } from "@/lib/household/partition";
+import { setupHomeCopy, isHouseholdSetupNeeded } from "@/lib/household/setup-home";
 
 /**
- * When the household has no active children, Hoje shows the setup cue (PRD §12.1).
- * Otherwise the authoritative agenda snapshot drives Hoje / Amanhã (issue #5).
+ * When the household has no active children, Hoje shows the setup cue (PRD §12.1 / issue #16).
+ * Otherwise the authoritative agenda snapshot drives Hoje / Amanhã.
  */
 export function HouseholdHome() {
   const [state, setState] = useState<"loading" | "setup" | "ready" | "unavailable">("loading");
@@ -27,7 +28,7 @@ export function HouseholdHome() {
       return;
     }
     const { active } = partitionChildren(result.data);
-    setState(active.length === 0 ? "setup" : "ready");
+    setState(isHouseholdSetupNeeded(active.length) ? "setup" : "ready");
   }, []);
 
   useEffect(() => {
@@ -48,11 +49,7 @@ export function HouseholdHome() {
   }
 
   if (state === "setup") {
-    return (
-      <p data-household-home="setup">
-        Configurar casa — cadastre a primeira criança em Configurações.
-      </p>
-    );
+    return <p data-household-home="setup">{setupHomeCopy()}</p>;
   }
 
   return (

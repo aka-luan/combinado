@@ -982,15 +982,16 @@ Falha de push remove notificações do v1, mas não encerra o projeto.
 - auditoria;
 - bootstrap idempotente.
 
-### M2 — Leitura de Hoje e Amanhã
+### M2 — Setup mínimo e leitura de Hoje e Amanhã
 
+Ordem de implementação: o cadastro mínimo na PWA (criança existente em configurações + criação de rotina semanal create-only, campos §8.5) precede a demonstração de Hoje/Amanhã. Semente SQL fica restrita a testes automatizados — não é o caminho de demo enquanto se implementa.
+
+- setup mínimo via `Configurar casa` (criança + rotina semanal);
 - snapshot do servidor;
 - ordenação;
 - estados;
 - alerta sem responsável;
-- Amanhã a partir das 19h;
-- dados semeados;
-- somente leitura.
+- Amanhã a partir das 19h.
 
 ### M3 — Medicação
 
@@ -1016,20 +1017,22 @@ Falha de push remove notificações do v1, mas não encerra o projeto.
 - eventos avulsos;
 - conclusão;
 - correção;
-- exceção;
+- edição/versionamento de rotinas e exceções (a primeira criação de rotina já ocorreu no setup mínimo de M2);
 - troca de responsável;
 - fluxo rápido em até três toques.
 
 ### M6 — Cadastros e onboarding
 
 - adultos;
-- crianças;
-- rotinas;
+- crianças (além do create já disponível);
+- listagem/gestão de rotinas além do create-only de M2;
 - medicamentos;
 - eventos futuros;
 - arquivamento;
-- onboarding dos dois adultos;
-- configurações.
+- onboarding do segundo adulto;
+- configurações completas.
+
+O first-run `Configurar casa` (criança + rotina) foi antecipado para M2; M6 completa o restante da superfície administrativa.
 
 ### M7 — Operação
 

@@ -88,6 +88,53 @@ main {
   color: light-dark(#b91c1c, #fca5a5);
 }
 
+[data-routines-settings] ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+[data-routine-create] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0.5rem 0 1rem;
+}
+
+[data-routine-create] label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+[data-routine-weekdays] {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+[data-routine-weekdays] legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+[data-routine-weekdays] label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+[data-routines-error] {
+  color: light-dark(#b91c1c, #fca5a5);
+}
+
+
 [data-casa-target] {
   font-size: 0.9rem;
   opacity: 0.9;
