@@ -64,15 +64,19 @@ begin
 
   -- First day at create time: only 12:00 and 20:00 (08:00 already passed at creation)
   snap := public.household_agenda_snapshot(at_create);
-  occs := snap->'today'->'occurrences';
+  occs := (
+    select coalesce(jsonb_agg(e), '[]'::jsonb)
+    from jsonb_array_elements(snap->'today'->'occurrences') e
+    where e->>'source' = 'medication'
+      and e->>'source_id' = med_id::text
+  );
   if jsonb_array_length(occs) <> 2 then
     raise exception 'first-day filter expected 2 doses, got % %', jsonb_array_length(occs), occs;
   end if;
 
   select array_agg(e->>'scheduled_time' order by e->>'scheduled_time')
     into slots
-  from jsonb_array_elements(occs) e
-  where e->>'source' = 'medication';
+  from jsonb_array_elements(occs) e;
 
   if slots is distinct from array['12:00', '20:00'] then
     raise exception 'first-day slots mismatch: %', slots;
@@ -83,7 +87,8 @@ begin
   select array_agg(e->>'status' order by e->>'scheduled_time')
     into statuses
   from jsonb_array_elements(snap->'today'->'occurrences') e
-  where e->>'source' = 'medication';
+  where e->>'source' = 'medication'
+    and e->>'source_id' = med_id::text;
   if statuses is distinct from array['pending', 'scheduled'] then
     raise exception 'noon statuses expected [pending, scheduled], got %', statuses;
   end if;
@@ -92,7 +97,8 @@ begin
   snap := public.household_agenda_snapshot(after_slot);
   select e into first_occ
   from jsonb_array_elements(snap->'today'->'occurrences') e
-  where e->>'scheduled_time' = '20:00';
+  where e->>'scheduled_time' = '20:00'
+    and e->>'source_id' = med_id::text;
   if first_occ->>'status' is distinct from 'late' then
     raise exception '20:01 status expected late, got %', first_occ->>'status';
   end if;
