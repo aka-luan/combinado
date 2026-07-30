@@ -153,6 +153,25 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "misconfigured" }), { status: 500 });
   }
 
+  try {
+    return await handleSend(req, {
+      vapidSubject,
+      supabaseUrl,
+      serviceKey,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown";
+    return new Response(JSON.stringify({ error: "internal", message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+});
+
+async function handleSend(
+  _req: Request,
+  env: { vapidSubject: string; supabaseUrl: string; serviceKey: string },
+) {
   let vapidKeys: CryptoKeyPair;
   try {
     vapidKeys = await loadVapidKeys();
@@ -160,23 +179,27 @@ Deno.serve(async (req) => {
     const reason = err instanceof Error ? err.message : "import_failed";
     return new Response(JSON.stringify({ error: "misconfigured_vapid", reason }), {
       status: 500,
+      headers: { "Content-Type": "application/json" },
     });
   }
 
   const appServer = await webpush.ApplicationServer.new({
-    contactInformation: vapidSubject.startsWith("mailto:")
-      ? vapidSubject
-      : `mailto:${vapidSubject}`,
+    contactInformation: env.vapidSubject.startsWith("mailto:")
+      ? env.vapidSubject
+      : `mailto:${env.vapidSubject}`,
     vapidKeys,
   });
 
-  const admin = createClient(supabaseUrl, serviceKey);
+  const admin = createClient(env.supabaseUrl, env.serviceKey);
   const { data: rows, error } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth");
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const payload = JSON.stringify({
@@ -185,9 +208,19 @@ Deno.serve(async (req) => {
     url: "/",
   });
 
-  // Public by design — returned on failure so we can confirm it matches the
-  // NEXT_PUBLIC_VAPID_PUBLIC_KEY the PWA used when subscribing.
-  const serverVapidPublicKey = await webpush.exportApplicationServerKey(vapidKeys);
+  // Public by design — compare to NEXT_PUBLIC_VAPID_PUBLIC_KEY in the PWA build.
+  let serverVapidPublicKey: string;
+  try {
+    if (typeof webpush.exportApplicationServerKey === "function") {
+      serverVapidPublicKey = await webpush.exportApplicationServerKey(vapidKeys);
+    } else {
+      serverVapidPublicKey = bytesToB64url(
+        new Uint8Array(await crypto.subtle.exportKey("raw", vapidKeys.publicKey)),
+      );
+    }
+  } catch (err) {
+    serverVapidPublicKey = err instanceof Error ? `export_failed:${err.message}` : "export_failed";
+  }
 
   const results: {
     id: string;
@@ -207,12 +240,11 @@ Deno.serve(async (req) => {
       });
       await subscriber.pushTextMessage(payload, {
         ttl: 30 * 60,
-        urgency: webpush.Urgency.Normal,
+        urgency: "normal" as webpush.Urgency,
       });
       results.push({ id: row.id, status: "sent", endpointHost });
     } catch (err) {
-      const response =
-        err instanceof webpush.PushMessageError ? err.response : null;
+      const response = isPushMessageError(err) ? err.response : null;
       const status = response?.status ?? "error";
       let detail: string | undefined;
       if (response) {
@@ -222,11 +254,10 @@ Deno.serve(async (req) => {
           detail = response.statusText;
         }
       } else if (err instanceof Error) {
-        detail = err.message;
+        detail = err.message || err.toString();
       }
 
-      // 404/410 mean the endpoint is permanently gone (PRD §10.4).
-      if (status === 404 || status === 410 || (err instanceof webpush.PushMessageError && err.isGone())) {
+      if (status === 404 || status === 410 || (isPushMessageError(err) && err.isGone())) {
         staleIds.push(row.id);
       }
       results.push({ id: row.id, status, detail, endpointHost });
@@ -246,4 +277,17 @@ Deno.serve(async (req) => {
     }),
     { headers: { "Content-Type": "application/json" } },
   );
-});
+}
+
+function isPushMessageError(
+  err: unknown,
+): err is { response: Response; isGone: () => boolean } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "response" in err &&
+    typeof (err as { response?: unknown }).response === "object" &&
+    "isGone" in err &&
+    typeof (err as { isGone?: unknown }).isGone === "function"
+  );
+}
