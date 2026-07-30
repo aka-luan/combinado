@@ -74,38 +74,24 @@ Issues and PRDs live in GitHub Issues for `aka-luan/combinado`; follow
 labels mapped in [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
 External PRs are not a triage intake surface.
 
-## Cursor Cloud specific instructions
+## Agent skills
 
-Dependencies (`pnpm install`) are refreshed automatically on VM startup. Commands
-(`pnpm dev`, `pnpm build`, `pnpm test`, etc.) are documented in
-[`README.md`](README.md); only the non-obvious caveats below are cloud-specific.
+Matt Pocock's skills live under [`.agents/skills/`](.agents/skills/)
+(`skills-lock.json` pins the install). Prefer `/ask-matt` when unsure which
+flow to use.
 
-- **Node / TypeScript unit tests:** The VM's on-PATH `node` is pinned at 22.14
-  (`/exec-daemon/node`, which wins over nvm), older than the 22.18 where built-in
-  `.ts` type stripping is unflagged. `tests/unit/*.test.mjs` import `.ts` helpers
-  directly, so without stripping they fail with `ERR_UNKNOWN_FILE_EXTENSION`.
-  `NODE_OPTIONS=--experimental-strip-types` is exported in `~/.bashrc` to fix
-  this; new shells inherit it, so `pnpm run test:unit` / `pnpm test` just work.
-  If a shell somehow lacks it, prefix the command with that env var. The flag is
-  harmless on Node ≥ 22.18.
-- **`pnpm lint` is not usable here:** ESLint is not installed/configured, so
-  `next lint` drops into an interactive setup wizard (and CI does not run it).
-  Rely on `pnpm typecheck` for static checking.
-- **`pnpm run test:rls` needs Postgres:** a local PostgreSQL 16 is installed and
-  runs on `127.0.0.1:5432` (user/password `postgres`/`postgres`). After a fresh
-  VM boot, start it with `sudo pg_ctlcluster 16 main start` if it is not already
-  up. Run the tests with `DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`.
-  The script skips gracefully when Postgres/`psql` is absent unless `CI=true` or
-  `COMBINADO_REQUIRE_RLS=1`; use `COMBINADO_REQUIRE_RLS=1` to force it locally.
-  It uses plain Postgres + `tests/sql/auth_stub.sql`, not a live Supabase stack.
-- **`pnpm run test:e2e` / build:** Playwright's Chromium + WebKit browsers are
-  installed. E2E serves the exported `out/`, so run `pnpm build` first (the full
-  `pnpm test` chain already does).
-- **Supabase credentials for local UI:** write
-  `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` into
-  gitignored `.env.development.local` (Next loads them for `pnpm dev`). Restart
-  `pnpm dev` after changing that file — Next only reads env at process start.
-  Without those vars the app intentionally shows the "não configurada" state.
-  There is no local Supabase stack; Auth OTP / temporary-password login hit the
-  hosted project. Real login still needs a provisioned Adulto (email + OTP or
-  temporary password from Supabase Studio — see `docs/runbook-auth.md`).
+### Issue tracker
+
+GitHub Issues via `gh`, inferred from the git remote. See
+[`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Canonical roles map 1:1 to GitHub labels (`needs-triage`, `needs-info`,
+`ready-for-agent`, `ready-for-human`, `wontfix`). See
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See
+[`docs/agents/domain.md`](docs/agents/domain.md).
