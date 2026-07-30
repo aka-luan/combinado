@@ -86,6 +86,21 @@ export function needsEarlyConfirmationAck(
   return minutes !== null && minutes > 30;
 }
 
+/** Device-clock deadline for the 10s undo window, derived from server times. */
+export function undoDeadlineFromServer(
+  confirmedAtIso: string | null | undefined,
+  serverTimeIso: string,
+  undoMs: number = 10_000,
+): number | null {
+  if (!confirmedAtIso) return null;
+  const confirmed = Date.parse(confirmedAtIso);
+  const server = Date.parse(serverTimeIso);
+  if (Number.isNaN(confirmed) || Number.isNaN(server)) return null;
+  const remaining = confirmed + undoMs - server;
+  if (remaining <= 0) return null;
+  return Date.now() + remaining;
+}
+
 export function isConfirmableDose(
   occurrence: SnapshotOccurrence,
   day: "today" | "tomorrow",

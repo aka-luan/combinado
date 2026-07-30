@@ -31,6 +31,9 @@ declare
   statuses text[];
   slots text[];
 begin
+  -- Allow controlled clocks in this suite only (production RPCs ignore client p_at).
+  perform set_config('combinado.allow_clock_override', 'on', true);
+
   insert into auth.users (id, email) values
     (adult1, 'a1@example.com'),
     (adult2, 'a2@example.com'),
@@ -80,6 +83,18 @@ begin
 
   if slots is distinct from array['12:00', '20:00'] then
     raise exception 'first-day slots mismatch: %', slots;
+  end if;
+
+  -- Later day uses the complete schedule (including 08:00 filtered on day 1)
+  occs := public.derive_medication_occurrences_for_day(
+    hid, '2026-07-31'::date, ('2026-07-31 09:00:00'::timestamp AT TIME ZONE tz)
+  );
+  select array_agg(e->>'scheduled_time' order by e->>'scheduled_time')
+    into slots
+  from jsonb_array_elements(occs) e
+  where e->>'source_id' = med_id::text;
+  if slots is distinct from array['08:00', '12:00', '20:00'] then
+    raise exception 'day-2 complete schedule expected, got %', slots;
   end if;
 
   -- Status: at 12:00 exact → pending for 12:00; 20:00 still scheduled
@@ -175,9 +190,20 @@ begin
   snap := public.household_agenda_snapshot(at_slot);
   select e into first_occ
   from jsonb_array_elements(snap->'today'->'occurrences') e
-  where e->>'scheduled_time' = '20:00' and e->>'source' = 'medication';
+  where e->>'scheduled_time' = '20:00'
+    and e->>'source' = 'medication'
+    and e->>'source_id' = med_id::text;
   if first_occ->>'status' is distinct from 'completed' then
     raise exception 'confirmed dose status expected completed, got %', first_occ;
+  end if;
+
+  -- Correction window closed after midnight of the dose day
+  rev := public.reverse_dose_confirmation(
+    (first_occ->>'confirmation_id')::uuid,
+    at_midnight
+  );
+  if rev->>'code' is distinct from 'correction_window_closed' then
+    raise exception 'correction after midnight should close, got %', rev;
   end if;
 
   -- Midnight: unconfirmed past dose → unrecorded (derive for previous day)
@@ -275,12 +301,27 @@ begin
     perform public.create_medication(child_id, 'Hack', null, array['09:00'], '2026-07-30'::date, null);
     raise exception 'outsider create_medication should fail';
   exception
-    when others then
-      if sqlerrm not like '%household_missing%' and sqlstate <> 'P0001' then
-        -- acceptable: household_missing
-        null;
+    when sqlstate 'P0001' then
+      if sqlerrm not like '%household_missing%' then
+        raise;
       end if;
   end;
+
+  -- Authenticated client cannot spoof p_at (tomorrow must stay unconfirmable).
+  execute 'reset role';
+  perform set_config('combinado.allow_clock_override', 'off', true);
+  perform set_config('request.jwt.claim.sub', adult1::text, true);
+  execute 'set local role authenticated';
+  conf := public.confirm_dose(
+    med_id,
+    (public.local_date_in_household(now()) + 1),
+    '09:00',
+    true,
+    now() + interval '1 day'
+  );
+  if conf->>'code' is distinct from 'not_confirmable_day' then
+    raise exception 'spoofed p_at must not confirm tomorrow, got %', conf;
+  end if;
 
   execute 'reset role';
   raise notice 'medication dose tests OK';

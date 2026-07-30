@@ -58,6 +58,31 @@ export function AgendaHome() {
     };
   }, [refresh]);
 
+  // Realtime only invalidates; occurrences still come from a full snapshot refetch (PRD §13).
+  useEffect(() => {
+    if (!client) return;
+    const channel = client
+      .channel("agenda-dose-invalidate")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dose_confirmations" },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "medication_versions" },
+        () => {
+          void refresh();
+        },
+      )
+      .subscribe();
+    return () => {
+      void client.removeChannel(channel);
+    };
+  }, [client, refresh]);
+
   if (state.kind === "loading") {
     return <p data-agenda="loading">Carregando…</p>;
   }
@@ -98,7 +123,7 @@ export function AgendaHome() {
               serverTime={snapshot.server_time}
               timezone={snapshot.timezone}
               client={client}
-              onChanged={() => void refresh()}
+              onChanged={refresh}
             />
           ))}
         </ul>
@@ -129,7 +154,7 @@ export function AgendaHome() {
                   serverTime={snapshot.server_time}
                   timezone={snapshot.timezone}
                   client={client}
-                  onChanged={() => void refresh()}
+                  onChanged={refresh}
                 />
               ))}
             </ul>

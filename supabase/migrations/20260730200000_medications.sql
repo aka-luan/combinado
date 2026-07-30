@@ -293,6 +293,26 @@ revoke all on function public.create_medication(uuid, text, text, text[], date, 
 grant execute on function public.create_medication(uuid, text, text, text[], date, date) to authenticated;
 
 -- ---------------------------------------------------------------------------
+-- Mutation clock: authenticated callers cannot spoof p_at (backfill / early bypass).
+-- SQL tests enable override: set_config('combinado.allow_clock_override', 'on', true)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.mutation_at(p_at timestamptz default null)
+returns timestamptz
+language plpgsql
+stable
+as $$
+begin
+  if current_setting('combinado.allow_clock_override', true) = 'on' then
+    return coalesce(p_at, now());
+  end if;
+  return now();
+end;
+$$;
+
+revoke all on function public.mutation_at(timestamptz) from public;
+
+-- ---------------------------------------------------------------------------
 -- Immediate interruption (cancel remaining same-day doses)
 -- ---------------------------------------------------------------------------
 
@@ -307,6 +327,7 @@ set search_path = public
 as $$
 declare
   hid uuid;
+  at_effective timestamptz;
   today_date date;
   ver public.medication_versions%rowtype;
 begin
@@ -322,7 +343,8 @@ begin
     raise exception 'medication_not_found' using errcode = 'P0001';
   end if;
 
-  today_date := public.local_date_in_household(p_at);
+  at_effective := public.mutation_at(p_at);
+  today_date := public.local_date_in_household(at_effective);
 
   select vv.* into ver
   from public.medication_versions vv
@@ -347,7 +369,7 @@ begin
   -- Close treatment on the interrupt day; remaining slots derive as cancelled.
   update public.medication_versions
   set
-    interrupted_at = p_at,
+    interrupted_at = at_effective,
     valid_until = case
       when valid_until is null or valid_until > today_date then today_date
       else valid_until
@@ -357,7 +379,7 @@ begin
   return jsonb_build_object(
     'ok', true,
     'medication_id', p_medication_id,
-    'interrupted_at', p_at,
+    'interrupted_at', at_effective,
     'already', false
   );
 end;
@@ -385,6 +407,7 @@ as $$
 declare
   hid uuid;
   uid uuid := auth.uid();
+  at_effective timestamptz;
   today_date date;
   local_hhmm text;
   slot_norm text;
@@ -412,8 +435,9 @@ begin
     raise exception 'local_date_required' using errcode = 'P0001';
   end if;
 
-  today_date := public.local_date_in_household(p_at);
-  local_hhmm := public.local_time_hhmm_in_household(p_at);
+  at_effective := public.mutation_at(p_at);
+  today_date := public.local_date_in_household(at_effective);
+  local_hhmm := public.local_time_hhmm_in_household(at_effective);
 
   -- v1: no backfill after midnight / past days; no tomorrow confirmation.
   if p_local_date <> today_date then
@@ -517,7 +541,7 @@ begin
       slot_norm,
       occ_key,
       uid,
-      p_at
+      at_effective
     )
     returning id, confirmed_at into new_id, conf_at;
   exception
@@ -573,6 +597,7 @@ as $$
 declare
   hid uuid;
   uid uuid := auth.uid();
+  at_effective timestamptz;
   today_date date;
   conf public.dose_confirmations%rowtype;
 begin
@@ -595,20 +620,21 @@ begin
     return jsonb_build_object('ok', false, 'code', 'already_reversed');
   end if;
 
-  today_date := public.local_date_in_household(p_at);
+  at_effective := public.mutation_at(p_at);
+  today_date := public.local_date_in_household(at_effective);
   -- Correction allowed until end of the local day of the dose (and undo within that day).
   if conf.local_date <> today_date then
     return jsonb_build_object('ok', false, 'code', 'correction_window_closed');
   end if;
 
   update public.dose_confirmations
-  set reversed_at = p_at, reversed_by = uid
+  set reversed_at = at_effective, reversed_by = uid
   where id = conf.id;
 
   return jsonb_build_object(
     'ok', true,
     'confirmation_id', conf.id,
-    'reversed_at', p_at,
+    'reversed_at', at_effective,
     'reversed_by', uid,
     'original_confirmed_by', conf.confirmed_by,
     'original_confirmed_at', conf.confirmed_at
@@ -641,6 +667,13 @@ declare
   is_past boolean;
   result jsonb := '[]'::jsonb;
 begin
+  -- When called by an authenticated Adult, only their Casa is readable.
+  if auth.uid() is not null
+    and not public.is_household_member(p_household_id)
+  then
+    return '[]'::jsonb;
+  end if;
+
   today_date := public.local_date_in_household(p_now);
   local_hhmm := public.local_time_hhmm_in_household(p_now);
   is_today := today_date = p_local_day;
@@ -910,3 +943,21 @@ create policy "Members select dose_confirmations"
 grant select on table public.medications to authenticated;
 grant select on table public.medication_versions to authenticated;
 grant select on table public.dose_confirmations to authenticated;
+
+-- Realtime: invalidate client snapshot on dose/medication writes (PRD §§9.3, 13).
+do $$
+begin
+  begin
+    execute 'alter publication supabase_realtime add table public.dose_confirmations';
+  exception
+    when undefined_object then null; -- local stub / non-Supabase
+    when duplicate_object then null;
+  end;
+  begin
+    execute 'alter publication supabase_realtime add table public.medication_versions';
+  exception
+    when undefined_object then null;
+    when duplicate_object then null;
+  end;
+end;
+$$;

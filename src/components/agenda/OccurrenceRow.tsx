@@ -12,12 +12,9 @@ import {
   needsEarlyConfirmationAck,
   statusLabel,
   ownerAlertPresentation,
+  undoDeadlineFromServer,
 } from "@/lib/agenda/presentation";
 import type { SnapshotOccurrence } from "@/lib/agenda/types";
-
-const UNDO_MS = 10_000;
-/** Survives snapshot refresh so the 10s undo window stays available. */
-const undoDeadlines = new Map<string, number>();
 
 type Props = {
   occurrence: SnapshotOccurrence;
@@ -25,7 +22,7 @@ type Props = {
   serverTime: string;
   timezone: string;
   client: SupabaseClient | null;
-  onChanged: () => void;
+  onChanged: () => Promise<void>;
 };
 
 export function OccurrenceRow({
@@ -44,28 +41,24 @@ export function OccurrenceRow({
   const [correctPrompt, setCorrectPrompt] = useState(false);
   const [, setTick] = useState(0);
 
-  const confirmable = isConfirmableDose(occurrence, day);
+  const confirmable = isConfirmableDose(occurrence, day) && !busy;
   const reversible = isReversibleDose(occurrence, day);
-  const undoUntil =
-    occurrence.confirmation_id != null
-      ? (undoDeadlines.get(occurrence.confirmation_id) ?? null)
-      : null;
+  const undoUntil = undoDeadlineFromServer(
+    occurrence.confirmed_at ?? null,
+    serverTime,
+  );
   const showUndo = reversible && undoUntil !== null && Date.now() < undoUntil;
 
   useEffect(() => {
     if (undoUntil === null) return;
     const remaining = undoUntil - Date.now();
     if (remaining <= 0) {
-      if (occurrence.confirmation_id) undoDeadlines.delete(occurrence.confirmation_id);
       setTick((n) => n + 1);
       return;
     }
-    const t = window.setTimeout(() => {
-      if (occurrence.confirmation_id) undoDeadlines.delete(occurrence.confirmation_id);
-      setTick((n) => n + 1);
-    }, remaining);
+    const t = window.setTimeout(() => setTick((n) => n + 1), remaining);
     return () => window.clearTimeout(t);
-  }, [undoUntil, occurrence.confirmation_id]);
+  }, [undoUntil]);
 
   async function runConfirm(acknowledgeEarly: boolean) {
     if (!client || occurrence.source !== "medication" || !occurrence.slot) return;
@@ -80,15 +73,14 @@ export function OccurrenceRow({
       acknowledgeEarly,
     });
 
-    setBusy(false);
-
     if (result.ok) {
-      undoDeadlines.set(result.confirmationId, Date.now() + UNDO_MS);
-      onChanged();
+      await onChanged();
+      setBusy(false);
       return;
     }
 
     if (result.code === "early_confirmation_required") {
+      setBusy(false);
       setEarlyPrompt(true);
       return;
     }
@@ -97,15 +89,18 @@ export function OccurrenceRow({
       const when = formatConfirmTime(result.confirmedAt, timezone);
       const who = result.confirmedByDisplayName ?? "Outro adulto";
       setFeedback(`Já registrada por ${who}${when ? ` às ${when}` : ""}.`);
-      onChanged();
+      await onChanged();
+      setBusy(false);
       return;
     }
 
+    setBusy(false);
     setFeedback("Não foi possível confirmar a dose.");
   }
 
   async function handleConfirmClick() {
     if (!client) return;
+    // Prefer server early gate; client hint avoids an extra round-trip when obvious.
     if (needsEarlyConfirmationAck(occurrence, serverTime, timezone)) {
       setEarlyPrompt(true);
       return;
@@ -121,12 +116,10 @@ export function OccurrenceRow({
     }
     setBusy(true);
     setFeedback(null);
-    const confirmationId = occurrence.confirmation_id;
-    const result = await reverseDoseConfirmation(client, confirmationId);
-    setBusy(false);
-    setCorrectPrompt(false);
-    undoDeadlines.delete(confirmationId);
+    const result = await reverseDoseConfirmation(client, occurrence.confirmation_id);
     if (!result.ok) {
+      setBusy(false);
+      setCorrectPrompt(false);
       setFeedback(
         result.code === "correction_window_closed"
           ? "Correção disponível só até o fim do dia."
@@ -134,7 +127,9 @@ export function OccurrenceRow({
       );
       return;
     }
-    onChanged();
+    setCorrectPrompt(false);
+    await onChanged();
+    setBusy(false);
   }
 
   return (
@@ -143,6 +138,7 @@ export function OccurrenceRow({
       data-occurrence-status={occurrence.status}
       data-occurrence-source={occurrence.source}
       data-owner-alert={alert.show ? "true" : "false"}
+      aria-busy={busy ? "true" : undefined}
       className={alert.show ? "occurrence occurrence--owner-alert" : "occurrence"}
     >
       <div className="occurrence__main">
@@ -177,11 +173,7 @@ export function OccurrenceRow({
 
       {confirmable && client ? (
         <div className="occurrence__actions" data-dose-actions>
-          {busy ? (
-            <span data-dose-registering role="status">
-              registrando…
-            </span>
-          ) : earlyPrompt ? (
+          {earlyPrompt ? (
             <div data-early-confirm>
               <p>Confirmar esta dose agora?</p>
               <button type="button" onClick={() => void runConfirm(true)}>
@@ -199,13 +191,17 @@ export function OccurrenceRow({
         </div>
       ) : null}
 
-      {reversible && client ? (
+      {busy ? (
+        <div className="occurrence__actions">
+          <span data-dose-registering role="status">
+            registrando…
+          </span>
+        </div>
+      ) : null}
+
+      {reversible && client && !busy ? (
         <div className="occurrence__actions" data-dose-reverse>
-          {busy ? (
-            <span data-dose-registering role="status">
-              registrando…
-            </span>
-          ) : showUndo ? (
+          {showUndo ? (
             <button type="button" data-undo-dose onClick={() => void handleReverse("undo")}>
               Desfazer
             </button>

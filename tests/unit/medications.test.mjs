@@ -139,3 +139,12 @@ test("early confirmation ack and confirmable day rules", () => {
     false,
   );
 });
+
+test("undoDeadlineFromServer exposes a shared 10s window from server times", async () => {
+  const { undoDeadlineFromServer } = await import("../../src/lib/agenda/presentation.ts");
+  const confirmedAt = "2026-07-30T20:00:00.000Z";
+  const within = undoDeadlineFromServer(confirmedAt, "2026-07-30T20:00:05.000Z");
+  assert.ok(within !== null && within > Date.now());
+  const expired = undoDeadlineFromServer(confirmedAt, "2026-07-30T20:00:11.000Z");
+  assert.equal(expired, null);
+});
