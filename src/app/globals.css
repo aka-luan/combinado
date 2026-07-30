@@ -218,9 +218,23 @@ main {
 
 .occurrence__target,
 .occurrence__status,
-.occurrence__owner {
+.occurrence__owner,
+.occurrence__instruction {
   font-size: 0.85rem;
   opacity: 0.85;
+}
+
+.occurrence__actions {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.occurrence__actions button {
+  font: inherit;
+  font-size: 0.9rem;
 }
 
 .occurrence__alert {

@@ -1,8 +1,16 @@
-export type OccurrenceStatus = "scheduled" | "late" | "completed" | "cancelled";
+export type OccurrenceStatus =
+  | "scheduled"
+  | "pending"
+  | "late"
+  | "completed"
+  | "cancelled"
+  | "unrecorded";
+
+export type OccurrenceSource = "routine" | "medication";
 
 export type SnapshotOccurrence = {
   key: string;
-  source: "routine";
+  source: OccurrenceSource;
   source_id: string;
   local_date: string;
   slot: string | null;
@@ -16,6 +24,12 @@ export type SnapshotOccurrence = {
   owner_display_name: string | null;
   status: OccurrenceStatus;
   needs_owner_alert: boolean;
+  /** Optional medication instruction (PRD §9.2). */
+  instruction?: string | null;
+  confirmation_id?: string | null;
+  confirmed_at?: string | null;
+  confirmed_by_user_id?: string | null;
+  confirmed_by_display_name?: string | null;
 };
 
 export type DaySnapshot = {

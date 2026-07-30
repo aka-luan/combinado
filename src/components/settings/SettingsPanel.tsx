@@ -4,6 +4,7 @@ import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { signOut } from "@/lib/auth/session";
 import { ChildrenSettings } from "@/components/household/ChildrenSettings";
+import { MedicationsSettings } from "@/components/household/MedicationsSettings";
 import { RoutinesSettings } from "@/components/household/RoutinesSettings";
 import { PushSettings } from "@/components/push/PushSettings";
 
@@ -26,6 +27,7 @@ export function SettingsPanel() {
         <div data-settings-content>
           {client && <ChildrenSettings client={client} />}
           {client && <RoutinesSettings client={client} />}
+          {client && <MedicationsSettings client={client} />}
           {client && <PushSettings client={client} />}
           {!confirming ? (
             <button type="button" onClick={() => setConfirming(true)}>
