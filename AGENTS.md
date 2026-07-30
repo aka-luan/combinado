@@ -73,3 +73,25 @@ Issues and PRDs live in GitHub Issues for `aka-luan/combinado`; follow
 [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md). Use the five
 labels mapped in [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
 External PRs are not a triage intake surface.
+
+## Agent skills
+
+Matt Pocock's skills live under [`.agents/skills/`](.agents/skills/)
+(`skills-lock.json` pins the install). Prefer `/ask-matt` when unsure which
+flow to use.
+
+### Issue tracker
+
+GitHub Issues via `gh`, inferred from the git remote. See
+[`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Canonical roles map 1:1 to GitHub labels (`needs-triage`, `needs-info`,
+`ready-for-agent`, `ready-for-human`, `wontfix`). See
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` + `docs/adr/`. See
+[`docs/agents/domain.md`](docs/agents/domain.md).
