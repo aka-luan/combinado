@@ -107,5 +107,12 @@ Dependencies (`pnpm install`) are refreshed automatically on VM startup. Command
   `pnpm dev` after changing that file — Next only reads env at process start.
   Without those vars the app intentionally shows the "não configurada" state.
   There is no local Supabase stack; Auth OTP / temporary-password login hit the
-  hosted project. Real login still needs a provisioned Adulto (email + OTP or
-  temporary password from Supabase Studio — see `docs/runbook-auth.md`).
+  hosted project. Use a provisioned Adulto with temporary password
+  (`TEST_LOGIN_USERNAME` / `TEST_LOGIN_PASSWORD`) via "Usar senha temporária"
+  (see `docs/runbook-auth.md`).
+- **Casa must be bootstrapped before Hoje/Registro works:** login alone is not
+  enough. `households` / `household_members` are empty until
+  `public.bootstrap_household(...)` runs in the Supabase SQL Editor (service
+  role only — the app cannot call it; see `docs/runbook-household.md`). Until
+  then, Configurações shows "Casa ainda não configurada no servidor." and
+  creating children/routines fails by design.
