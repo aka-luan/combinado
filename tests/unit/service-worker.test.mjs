@@ -65,6 +65,16 @@ test("renderServiceWorker never writes runtime responses into the cache", () => 
   // The fetch handler must only ever read from the precache — it must not
   // call cache.put/cache.add anywhere outside the install handler's addAll.
   const fetchHandler = sw.slice(sw.indexOf('addEventListener("fetch"'));
-  assert.doesNotMatch(fetchHandler, /cache\.put/);
-  assert.doesNotMatch(fetchHandler, /caches\.open/);
+  const fetchOnly = fetchHandler.slice(0, fetchHandler.indexOf('addEventListener("push"'));
+  assert.doesNotMatch(fetchOnly, /cache\.put/);
+  assert.doesNotMatch(fetchOnly, /caches\.open/);
+});
+
+test("renderServiceWorker shows a notification on push and opens the app on click", () => {
+  const sw = renderServiceWorker("abc123", ["/"]);
+
+  assert.match(sw, /addEventListener\("push"/);
+  assert.match(sw, /showNotification/);
+  assert.match(sw, /addEventListener\("notificationclick"/);
+  assert.match(sw, /clients\.openWindow/);
 });

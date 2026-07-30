@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { signOut } from "@/lib/auth/session";
+import { PushSettings } from "@/components/push/PushSettings";
 
 export function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const client = getSupabaseBrowserClient();
 
   async function handleLogout() {
-    const client = getSupabaseBrowserClient();
     if (!client) return;
     await signOut(client);
   }
@@ -21,6 +22,7 @@ export function SettingsPanel() {
       </button>
       {open && (
         <div data-settings-content>
+          {client && <PushSettings client={client} />}
           {!confirming ? (
             <button type="button" onClick={() => setConfirming(true)}>
               Sair

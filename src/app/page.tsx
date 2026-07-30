@@ -1,5 +1,6 @@
 import { ConnectivityNotice } from "./connectivity-notice";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { PushLifecycle } from "@/components/push/PushLifecycle";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 
 export default function Home() {
@@ -11,6 +12,7 @@ export default function Home() {
       {appEnv !== "production" && <p data-app-env={appEnv}>Ambiente: {appEnv}</p>}
       <ConnectivityNotice />
       <AuthGate>
+        <PushLifecycle />
         <p>Casca do aplicativo publicada.</p>
         <SettingsPanel />
       </AuthGate>

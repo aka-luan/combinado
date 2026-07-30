@@ -28,3 +28,27 @@ main {
   font-size: 0.9rem;
   opacity: 0.8;
 }
+
+[data-settings-content] {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  max-width: 28rem;
+  text-align: left;
+}
+
+[data-push-settings] h2 {
+  font-size: 1rem;
+  margin: 0 0 0.35rem;
+}
+
+[data-push-settings] p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+[data-push-error] {
+  color: light-dark(#b91c1c, #fca5a5);
+}

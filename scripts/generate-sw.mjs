@@ -110,6 +110,50 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
+self.addEventListener("push", (event) => {
+  let title = "Combinado";
+  let body = "Você tem uma atualização no Combinado.";
+  let url = "/";
+
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      if (typeof payload.title === "string" && payload.title) title = payload.title;
+      if (typeof payload.body === "string" && payload.body) body = payload.body;
+      if (typeof payload.url === "string" && payload.url) url = payload.url;
+    } catch {
+      const text = event.data.text();
+      if (text) body = text;
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      data: { url },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate?.(target);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(target);
+      }
+      return undefined;
+    })
+  );
+});
 `;
 }
 

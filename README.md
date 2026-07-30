@@ -54,6 +54,14 @@ instalado — sem cadastro público e sem Magic Link (ver seção 11 do [PRD](./
 Procedimentos administrativos (provisionar os dois adultos, recuperar acesso sem Gmail,
 trocar de adulto) estão em [docs/runbook-auth.md](./docs/runbook-auth.md).
 
+## Web Push
+
+Notificações usam Web Push + VAPID (PRD §10). A chave **pública** VAPID entra no build
+como `NEXT_PUBLIC_VAPID_PUBLIC_KEY`; a privada e o Cron ficam só no Supabase.
+Gere o par com `node scripts/generate-vapid-keys.mjs`. Procedimentos (Function, Cron
+Free, matriz nos iPhones, go/no-go) estão em [docs/runbook-push.md](./docs/runbook-push.md).
+O resultado do spike fica em [docs/push-spike-result.md](./docs/push-spike-result.md).
+
 ## Deploy
 
 O app é exportado como site estático (`next build` com `output: "export"`) e publicado no
@@ -70,6 +78,7 @@ GitHub (Settings → Secrets and variables → Actions):
 - `NEXT_PUBLIC_SUPABASE_URL` — URL pública do projeto Supabase.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon/publishable key (pública por design; ainda assim
   fica fora do git e só entra no build via CI).
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — chave pública VAPID para `PushManager.subscribe`.
 
 Deploy manual (sem esperar o CI), com a Cloudflare CLI autenticada:
 `pnpm dlx wrangler@4 pages deploy out --project-name combinado`.
