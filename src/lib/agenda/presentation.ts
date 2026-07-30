@@ -16,14 +16,20 @@ export function ownerAlertPresentation(occurrence: SnapshotOccurrence): {
 }
 
 export function statusLabel(occurrence: SnapshotOccurrence): string {
+  const isDose = occurrence.source === "medication";
   switch (occurrence.status) {
+    case "pending":
+      return "Pendente";
     case "late":
-      return "Atrasado";
+      return isDose ? "Atrasada" : "Atrasado";
     case "completed":
-      return "Concluído";
+      return isDose ? "Confirmada" : "Concluído";
     case "cancelled":
-      return "Cancelado";
+      return isDose ? "Cancelada por alteração" : "Cancelado";
+    case "unrecorded":
+      return "Sem registro";
     default:
+      if (isDose) return "Programada";
       return occurrence.requires_confirmation ? "Programado" : "Informativo";
   }
 }
@@ -42,4 +48,59 @@ export function tomorrowView(tomorrow: TomorrowSnapshot): TomorrowView {
     empty_message: tomorrow.empty_message,
     occurrences: tomorrow.occurrences,
   };
+}
+
+/** Minutes from household local clock until an HH:mm slot (negative if past). */
+export function minutesUntilSlot(
+  scheduledTime: string,
+  serverTimeIso: string,
+  timezone: string = "America/Sao_Paulo",
+): number | null {
+  if (!/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(scheduledTime)) return null;
+  const now = new Date(serverTimeIso);
+  if (Number.isNaN(now.getTime())) return null;
+
+  const localHhmm = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  const [nh, nm] = localHhmm.split(":").map(Number);
+  const [sh, sm] = scheduledTime.split(":").map(Number);
+  if ([nh, nm, sh, sm].some((n) => Number.isNaN(n))) return null;
+  return sh * 60 + sm - (nh * 60 + nm);
+}
+
+/** PRD §9.3: more than 30 minutes before the slot needs a neutral extra confirm. */
+export function needsEarlyConfirmationAck(
+  occurrence: SnapshotOccurrence,
+  serverTimeIso: string,
+  timezone: string = "America/Sao_Paulo",
+): boolean {
+  if (occurrence.source !== "medication") return false;
+  if (!occurrence.scheduled_time) return false;
+  if (occurrence.status === "completed" || occurrence.status === "cancelled") return false;
+  if (occurrence.status === "unrecorded") return false;
+  const minutes = minutesUntilSlot(occurrence.scheduled_time, serverTimeIso, timezone);
+  return minutes !== null && minutes > 30;
+}
+
+export function isConfirmableDose(
+  occurrence: SnapshotOccurrence,
+  day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "medication") return false;
+  if (day !== "today") return false;
+  return (
+    occurrence.status === "scheduled" ||
+    occurrence.status === "pending" ||
+    occurrence.status === "late"
+  );
+}
+
+export function isReversibleDose(occurrence: SnapshotOccurrence, day: "today" | "tomorrow"): boolean {
+  if (occurrence.source !== "medication") return false;
+  if (day !== "today") return false;
+  return occurrence.status === "completed" && Boolean(occurrence.confirmation_id);
 }

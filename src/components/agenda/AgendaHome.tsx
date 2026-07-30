@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { fetchAgendaSnapshot } from "@/lib/agenda/snapshot";
 import { tomorrowView } from "@/lib/agenda/presentation";
@@ -19,15 +20,17 @@ type LoadState =
  */
 export function AgendaHome() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [client, setClient] = useState<SupabaseClient | null>(null);
 
   const refresh = useCallback(async () => {
-    const client = getSupabaseBrowserClient();
-    if (!client) {
+    const supabase = getSupabaseBrowserClient();
+    setClient(supabase);
+    if (!supabase) {
       setState({ kind: "unavailable" });
       return;
     }
 
-    const result = await fetchAgendaSnapshot(client);
+    const result = await fetchAgendaSnapshot(supabase);
     if (!result.ok) {
       setState({ kind: "error", message: result.error.message });
       return;
@@ -88,7 +91,15 @@ export function AgendaHome() {
       ) : (
         <ul data-today-list className="occurrence-list">
           {snapshot.today.occurrences.map((occ) => (
-            <OccurrenceRow key={occ.key} occurrence={occ} />
+            <OccurrenceRow
+              key={occ.key}
+              occurrence={occ}
+              day="today"
+              serverTime={snapshot.server_time}
+              timezone={snapshot.timezone}
+              client={client}
+              onChanged={() => void refresh()}
+            />
           ))}
         </ul>
       )}
@@ -111,7 +122,15 @@ export function AgendaHome() {
           ) : (
             <ul data-tomorrow-list className="occurrence-list">
               {tomorrow.occurrences.map((occ) => (
-                <OccurrenceRow key={occ.key} occurrence={occ} />
+                <OccurrenceRow
+                  key={occ.key}
+                  occurrence={occ}
+                  day="tomorrow"
+                  serverTime={snapshot.server_time}
+                  timezone={snapshot.timezone}
+                  client={client}
+                  onChanged={() => void refresh()}
+                />
               ))}
             </ul>
           )}

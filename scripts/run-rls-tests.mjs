@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Applies auth stub + migrations against DATABASE_URL (default local CI Postgres)
- * and runs tests/sql/rls_household.sql, agenda_snapshot.sql, and weekly_routine_create.sql.
+ * and runs tests/sql/rls_household.sql, agenda_snapshot.sql, weekly_routine_create.sql,
+ * and medication_doses.sql.
  *
  * Usage:
  *   DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres node scripts/run-rls-tests.mjs
@@ -72,6 +73,11 @@ grant execute on function public.household_timezone() to authenticated;
 grant execute on function public.local_date_in_household(timestamptz) to authenticated;
 grant execute on function public.occurrence_key(text, uuid, date, text) to authenticated;
 grant execute on function public.create_weekly_routine(text, text, uuid, smallint[], text, boolean, uuid, date, date) to authenticated;
+grant execute on function public.create_medication(uuid, text, text, text[], date, date) to authenticated;
+grant execute on function public.confirm_dose(uuid, date, text, boolean, timestamptz) to authenticated;
+grant execute on function public.reverse_dose_confirmation(uuid, timestamptz) to authenticated;
+grant execute on function public.interrupt_medication_immediate(uuid, timestamptz) to authenticated;
+grant execute on function public.derive_medication_occurrences_for_day(uuid, date, timestamptz) to authenticated;
 `);
 }
 
@@ -99,4 +105,5 @@ psqlGrant();
 psql(join(root, "tests/sql/rls_household.sql"));
 psql(join(root, "tests/sql/agenda_snapshot.sql"));
 psql(join(root, "tests/sql/weekly_routine_create.sql"));
-console.log("RLS + agenda snapshot + weekly routine create tests OK");
+psql(join(root, "tests/sql/medication_doses.sql"));
+console.log("RLS + agenda snapshot + weekly routine create + medication dose tests OK");

@@ -1,4 +1,11 @@
-import type { AgendaSnapshot, DaySnapshot, SnapshotOccurrence, TomorrowSnapshot } from "./types";
+import type {
+  AgendaSnapshot,
+  DaySnapshot,
+  OccurrenceSource,
+  OccurrenceStatus,
+  SnapshotOccurrence,
+  TomorrowSnapshot,
+} from "./types";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -18,6 +25,17 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+const STATUSES: ReadonlySet<string> = new Set([
+  "scheduled",
+  "pending",
+  "late",
+  "completed",
+  "cancelled",
+  "unrecorded",
+]);
+
+const SOURCES: ReadonlySet<string> = new Set(["routine", "medication"]);
+
 function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
   const o = asRecord(raw);
   if (!o) return null;
@@ -33,16 +51,15 @@ function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
   const needs_owner_alert = asBoolean(o.needs_owner_alert);
   if (
     !key ||
-    source !== "routine" ||
+    !source ||
+    !SOURCES.has(source) ||
     !source_id ||
     !local_date ||
     !title ||
     (target_kind !== "casa" && target_kind !== "child") ||
     !target_label ||
-    (status !== "scheduled" &&
-      status !== "late" &&
-      status !== "completed" &&
-      status !== "cancelled") ||
+    !status ||
+    !STATUSES.has(status) ||
     requires_confirmation === null ||
     needs_owner_alert === null
   ) {
@@ -51,7 +68,7 @@ function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
 
   return {
     key,
-    source: "routine",
+    source: source as OccurrenceSource,
     source_id,
     local_date,
     slot: asString(o.slot),
@@ -63,8 +80,18 @@ function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
     requires_confirmation,
     owner_user_id: asString(o.owner_user_id),
     owner_display_name: asString(o.owner_display_name),
-    status,
+    status: status as OccurrenceStatus,
     needs_owner_alert,
+    instruction: o.instruction === undefined ? undefined : asString(o.instruction),
+    confirmation_id:
+      o.confirmation_id === undefined ? undefined : asString(o.confirmation_id),
+    confirmed_at: o.confirmed_at === undefined ? undefined : asString(o.confirmed_at),
+    confirmed_by_user_id:
+      o.confirmed_by_user_id === undefined ? undefined : asString(o.confirmed_by_user_id),
+    confirmed_by_display_name:
+      o.confirmed_by_display_name === undefined
+        ? undefined
+        : asString(o.confirmed_by_display_name),
   };
 }
 

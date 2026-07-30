@@ -65,6 +65,24 @@ test("parseAgendaSnapshot rejects malformed payloads", () => {
   );
 });
 
+test("parseAgendaSnapshot accepts medication occurrences", () => {
+  const med = {
+    ...sampleOccurrence,
+    key: "medication:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:2026-07-30:08:00",
+    source: "medication",
+    slot: "08:00",
+    status: "pending",
+    needs_owner_alert: false,
+  };
+  const parsed = parseAgendaSnapshot({
+    ...sampleSnapshot,
+    today: { ...sampleSnapshot.today, occurrences: [med] },
+  });
+  assert.ok(parsed);
+  assert.equal(parsed.today.occurrences[0].source, "medication");
+  assert.equal(parsed.today.occurrences[0].status, "pending");
+});
+
 test("ownerAlertPresentation exposes color+icon+text cue only when flagged", () => {
   const alert = ownerAlertPresentation(sampleOccurrence);
   assert.equal(alert.show, true);
@@ -107,5 +125,14 @@ test("statusLabel maps server statuses for the UI", () => {
   assert.equal(
     statusLabel({ ...sampleOccurrence, status: "scheduled", requires_confirmation: false }),
     "Informativo",
+  );
+  assert.equal(
+    statusLabel({
+      ...sampleOccurrence,
+      source: "medication",
+      status: "late",
+      needs_owner_alert: false,
+    }),
+    "Atrasada",
   );
 });
