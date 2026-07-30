@@ -101,8 +101,11 @@ Dependencies (`pnpm install`) are refreshed automatically on VM startup. Command
 - **`pnpm run test:e2e` / build:** Playwright's Chromium + WebKit browsers are
   installed. E2E serves the exported `out/`, so run `pnpm build` first (the full
   `pnpm test` chain already does).
-- **No Supabase locally:** there is no local Supabase stack and no
-  `NEXT_PUBLIC_SUPABASE_*` set, so `pnpm dev` renders the first-class
-  "não configurado" state and the offline PWA shell rather than the login/Hoje
-  flow. Exercising real auth/data requires a hosted Supabase project's public
-  credentials in env.
+- **Supabase credentials for local UI:** write
+  `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` into
+  gitignored `.env.development.local` (Next loads them for `pnpm dev`). Restart
+  `pnpm dev` after changing that file — Next only reads env at process start.
+  Without those vars the app intentionally shows the "não configurada" state.
+  There is no local Supabase stack; Auth OTP / temporary-password login hit the
+  hosted project. Real login still needs a provisioned Adulto (email + OTP or
+  temporary password from Supabase Studio — see `docs/runbook-auth.md`).
