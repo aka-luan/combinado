@@ -12,8 +12,9 @@ Não existe cadastro público. Para criar uma das duas contas:
 2. Informe o e-mail do adulto. Não defina senha nem envie convite por link.
 3. Confirme o e-mail manualmente (**Auto Confirm User**), já que o fluxo do
    app é só OTP, não confirmação por e-mail de cadastro.
-4. Associe o usuário ao household singleton (membership), conforme o schema
-   definido no ticket de fundação (M1).
+4. Associe o usuário ao household singleton (membership). Depois de aplicar a
+   migration de fundação, use o bootstrap em
+   [docs/runbook-household.md](./runbook-household.md).
 
 ## Recuperação de acesso (Gmail SMTP indisponível)
 

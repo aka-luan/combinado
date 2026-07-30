@@ -1,5 +1,6 @@
 import { ConnectivityNotice } from "./connectivity-notice";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { HouseholdHome } from "@/components/household/HouseholdHome";
 import { PushLifecycle } from "@/components/push/PushLifecycle";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 
@@ -13,7 +14,7 @@ export default function Home() {
       <ConnectivityNotice />
       <AuthGate>
         <PushLifecycle />
-        <p>Casca do aplicativo publicada.</p>
+        <HouseholdHome />
         <SettingsPanel />
       </AuthGate>
     </main>

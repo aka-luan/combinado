@@ -14,8 +14,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test:unit": "node --test tests/unit/*.test.mjs",
+    "test:rls": "node scripts/run-rls-tests.mjs",
     "test:e2e": "playwright test",
-    "test": "pnpm run typecheck && pnpm run test:unit && pnpm run build && pnpm run test:e2e"
+    "test": "pnpm run typecheck && pnpm run test:unit && pnpm run test:rls && pnpm run build && pnpm run test:e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.8",

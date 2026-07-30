@@ -52,3 +52,47 @@ main {
 [data-push-error] {
   color: light-dark(#b91c1c, #fca5a5);
 }
+
+[data-children-settings] ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+[data-children-settings] li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+[data-child-create],
+[data-child-rename] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+  margin: 0.5rem 0 1rem;
+}
+
+[data-child-create] label,
+[data-child-rename] label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+[data-children-error] {
+  color: light-dark(#b91c1c, #fca5a5);
+}
+
+[data-casa-target] {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+[data-household-home="setup"] {
+  font-size: 1rem;
+}

@@ -29,10 +29,11 @@ Outros comandos:
 
 ```bash
 pnpm run typecheck   # tsc --noEmit
-pnpm run test:unit   # node --test, valida manifest.webmanifest e o gerador do Service Worker
+pnpm run test:unit   # node --test, valida helpers de auth/push/household e o SW
+pnpm run test:rls    # Postgres: policies do household (CI; local skip se sem psql)
 pnpm run build       # next build → exporta site estático em out/, gera ícones e sw.js
 pnpm run test:e2e    # Playwright: registro do Service Worker, casca offline
-pnpm test            # typecheck + test:unit + build + test:e2e
+pnpm test            # typecheck + test:unit + test:rls + build + test:e2e
 ```
 
 ### Variáveis de ambiente
@@ -53,6 +54,8 @@ Login por OTP de seis dígitos enviado por Gmail SMTP dedicado, verificado dentr
 instalado — sem cadastro público e sem Magic Link (ver seção 11 do [PRD](./PRD.md)).
 Procedimentos administrativos (provisionar os dois adultos, recuperar acesso sem Gmail,
 trocar de adulto) estão em [docs/runbook-auth.md](./docs/runbook-auth.md).
+O household singleton e as crianças usam RLS por membership —
+[docs/runbook-household.md](./docs/runbook-household.md).
 
 ## Web Push
 
