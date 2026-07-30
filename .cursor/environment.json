@@ -1,0 +1,22 @@
+{
+  "$schema": "https://www.cursor.com/schemas/environment.schema.json",
+  "name": "combinado",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "corepack enable && corepack prepare pnpm@11.10.0 --activate && node -v && pnpm install --frozen-lockfile",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "pnpm dev",
+      "description": "Next.js dev server on http://localhost:3000"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}

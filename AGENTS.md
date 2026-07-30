@@ -73,3 +73,20 @@ Issues and PRDs live in GitHub Issues for `aka-luan/combinado`; follow
 [`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md). Use the five
 labels mapped in [`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
 External PRs are not a triage intake surface.
+
+## Cursor Cloud specific instructions
+
+Cloud agents use `.cursor/environment.json` (Node ≥22.18 / preferably 22.22 +
+pnpm 11.10 via Dockerfile; `pnpm install --frozen-lockfile` on boot). Unit tests
+import `.ts` and need Node’s built-in type stripping. Dev: `pnpm dev` :3000.
+
+- Baseline verification: `pnpm typecheck`, `pnpm test:unit`, `pnpm build`.
+- Full suite: `pnpm test` (includes RLS + e2e). Skip `test:rls` without Postgres
+  (`DATABASE_URL`); skip `test:e2e` until browsers are installed.
+- E2e (on demand): `pnpm exec playwright install --with-deps chromium webkit`
+  then `pnpm test:e2e`.
+- Secrets belong in the Cloud Agents dashboard Secrets tab — never commit them.
+  Public build vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. Without them the app shows “not configured”.
+- Do not put VAPID private keys, Gmail App Password, or DB passwords in the
+  environment snapshot or git.
