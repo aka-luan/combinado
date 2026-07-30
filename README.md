@@ -56,6 +56,8 @@ Procedimentos administrativos (provisionar os dois adultos, recuperar acesso sem
 trocar de adulto) estão em [docs/runbook-auth.md](./docs/runbook-auth.md).
 O household singleton e as crianças usam RLS por membership —
 [docs/runbook-household.md](./docs/runbook-household.md).
+A agenda de Hoje/Amanhã vem de `household_agenda_snapshot` (ocorrências derivadas;
+semear rotina semanal no SQL Editor — ver o mesmo runbook).
 
 ## Web Push
 

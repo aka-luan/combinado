@@ -47,3 +47,42 @@ autenticado sem membership não lê nem grava dados da casa.
    que permanece), **ou** inserir a nova membership manualmente no mesmo
    `household_id`.
 4. Não apagar registros históricos do adulto substituído.
+
+## Semeadura de rotina semanal (M2 / issue #5)
+
+Aplicar também `20260730160000_agenda_snapshot.sql`. Com o household e pelo menos
+uma criança ativos, semear uma rotina **no SQL Editor** (service role) — o app
+ainda não escreve rotinas (isso é M5):
+
+```sql
+-- Substitua HOUSEHOLD_ID e CHILD_ID (ou use target_kind 'casa' com child null).
+select public.seed_weekly_routine(
+  'HOUSEHOLD_ID'::uuid,
+  'Levar à escola',
+  'child',                  -- ou 'casa'
+  'CHILD_ID'::uuid,         -- null se Casa
+  array[1,2,3,4,5]::smallint[], -- DOW Postgres: 0=dom … 6=sáb
+  '08:30',                  -- ou null (sem horário)
+  true,                     -- requer confirmação
+  null,                     -- responsável padrão (null = sem responsável → alerta)
+  current_date,             -- valid_from (inclusivo)
+  null,                     -- valid_until (inclusivo; null = sem fim)
+  current_date              -- effective_from da versão
+);
+```
+
+Verificar o snapshot (como membro autenticado no app, ou no SQL com
+`request.jwt.claim.sub` do adulto):
+
+```sql
+select public.household_agenda_snapshot();
+-- ou relógio controlado:
+select public.household_agenda_snapshot(
+  ('2026-07-30 19:00:00'::timestamp at time zone 'America/Sao_Paulo')
+);
+```
+
+Ocorrências **não** são tabela: a RPC deriva Hoje/Amanhã, `server_time`, e
+`version` (hash). Antes das 19h (fuso da casa) Amanhã só entra como `count`;
+a partir das 19h, `reveal` fica true e a seção inline aparece no app.
+

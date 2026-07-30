@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Applies auth stub + migrations against DATABASE_URL (default local CI Postgres)
- * and runs tests/sql/rls_household.sql.
+ * and runs tests/sql/rls_household.sql plus tests/sql/agenda_snapshot.sql.
  *
  * Usage:
  *   DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres node scripts/run-rls-tests.mjs
@@ -58,6 +58,10 @@ grant select on all tables in schema public to authenticated, anon;
 grant insert, update on table public.children to authenticated;
 revoke delete on table public.children from authenticated;
 grant usage, select on all sequences in schema public to authenticated;
+grant execute on function public.household_agenda_snapshot(timestamptz) to authenticated;
+grant execute on function public.household_timezone() to authenticated;
+grant execute on function public.local_date_in_household(timestamptz) to authenticated;
+grant execute on function public.occurrence_key(text, uuid, date, text) to authenticated;
 `;
   const result = spawnSync("psql", [databaseUrl, "-v", "ON_ERROR_STOP=1", "-c", sql], {
     encoding: "utf8",
@@ -80,4 +84,5 @@ for (const name of migrations) {
 
 psqlGrant();
 psql(join(root, "tests/sql/rls_household.sql"));
-console.log("RLS tests OK");
+psql(join(root, "tests/sql/agenda_snapshot.sql"));
+console.log("RLS + agenda snapshot tests OK");

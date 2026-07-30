@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AgendaHome } from "@/components/agenda/AgendaHome";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { listChildren } from "@/lib/household/children";
 import { HOUSEHOLD_CHANGED_EVENT } from "@/lib/household/events";
@@ -8,6 +9,7 @@ import { partitionChildren } from "@/lib/household/partition";
 
 /**
  * When the household has no active children, Hoje shows the setup cue (PRD §12.1).
+ * Otherwise the authoritative agenda snapshot drives Hoje / Amanhã (issue #5).
  */
 export function HouseholdHome() {
   const [state, setState] = useState<"loading" | "setup" | "ready" | "unavailable">("loading");
@@ -53,5 +55,9 @@ export function HouseholdHome() {
     );
   }
 
-  return <p data-household-home="ready">Hoje</p>;
+  return (
+    <div data-household-home="ready">
+      <AgendaHome />
+    </div>
+  );
 }
