@@ -22,13 +22,25 @@ CI — nunca neste repositório.
 
 ## Schema e Function
 
-1. Aplique `supabase/migrations/20260730120000_push_subscriptions.sql` no
-   SQL Editor (ou via CLI `supabase db push`).
-2. Faça deploy de `supabase/functions/send-test-push`:
-   `supabase functions deploy send-test-push --no-verify-jwt`
+1. Aplique `supabase/migrations/20260730120000_push_subscriptions.sql` e
+   `supabase/migrations/20260731120000_push_outbox.sql` no SQL Editor (ou via
+   CLI `supabase db push`).
+2. Faça deploy das Functions:
+   ```bash
+   supabase functions deploy send-test-push --no-verify-jwt
+   supabase functions deploy process-push-outbox --no-verify-jwt
+   ```
    (`--no-verify-jwt` porque a autenticação é service role / `x-cron-secret`,
    não o JWT do adulto).
-3. Disparo manual de verificação:
+3. Disparo manual do worker de outbox (doses + resumo 22h):
+   ```bash
+   curl -X POST "$SUPABASE_URL/functions/v1/process-push-outbox" \
+     -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+     -H "x-cron-secret: $PUSH_CRON_SECRET" \
+     -H "Content-Type: application/json" \
+     -d '{"source":"manual"}'
+   ```
+4. Spike de verificação (opcional):
    ```bash
    curl -X POST "$SUPABASE_URL/functions/v1/send-test-push" \
      -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
@@ -36,7 +48,7 @@ CI — nunca neste repositório.
      -H "Content-Type: application/json" \
      -d '{"source":"manual"}'
    ```
-4. Endpoints que respondem **404** ou **410** são removidos da tabela
+5. Endpoints que respondem **404** ou **410** são removidos da tabela
    automaticamente pela Function.
 
 ## Cron no plano Free
@@ -44,8 +56,10 @@ CI — nunca neste repositório.
 1. Habilite as extensões `pg_cron` e `pg_net` no projeto (Database →
    Extensions), se ainda não estiverem.
 2. Configure URL/secret conforme os comentários em
-   `supabase/cron/send-test-push.sql` e execute o schedule.
-3. Durante o spike o job roda a cada 15 minutos. Depois do go/no-go:
+   `supabase/cron/process-push-outbox.sql` (produção) ou
+   `supabase/cron/send-test-push.sql` (spike) e execute o schedule.
+3. O worker de outbox roda a cada minuto. Durante o spike o job de teste
+   rodava a cada 15 minutos — ao cortar para produção:
    ```sql
    select cron.unschedule(jobid)
    from cron.job

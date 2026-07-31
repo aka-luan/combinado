@@ -114,4 +114,5 @@ psql(join(root, "tests/sql/weekly_routine_planning.sql"));
 psql(join(root, "tests/sql/household_maintenance.sql"));
 psql(join(root, "tests/sql/medication_doses.sql"));
 psql(join(root, "tests/sql/events.sql"));
-console.log("RLS + agenda snapshot + weekly routine create + weekly routine planning + household maintenance + medication dose + event tests OK");
+psql(join(root, "tests/sql/push_outbox.sql"));
+console.log("RLS + agenda snapshot + weekly routine create + weekly routine planning + household maintenance + medication dose + event + push outbox tests OK");

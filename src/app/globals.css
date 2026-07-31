@@ -242,6 +242,12 @@ main {
   background: light-dark(#fffbeb, #422006);
 }
 
+.occurrence--deep-link-focus,
+.agenda__tomorrow.occurrence--deep-link-focus {
+  outline: 2px solid light-dark(#0369a1, #38bdf8);
+  outline-offset: 2px;
+}
+
 .occurrence__main {
   display: flex;
   flex-direction: column;

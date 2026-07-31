@@ -5,6 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { fetchAgendaSnapshot } from "@/lib/agenda/snapshot";
 import { tomorrowView } from "@/lib/agenda/presentation";
+import { parseAgendaDeepLink } from "@/lib/agenda/deep-link";
+import { applyAgendaDeepLinkFocus } from "@/lib/agenda/deep-link-focus";
 import type { AgendaSnapshot } from "@/lib/agenda/types";
 import { HOUSEHOLD_CHANGED_EVENT } from "@/lib/household/events";
 import {
@@ -39,6 +41,7 @@ export function AgendaHome() {
   const userIdRef = useRef<string | null>(null);
   const onlineRef = useRef(typeof navigator === "undefined" ? true : navigator.onLine);
   const blockWritesUntilRefetchRef = useRef(false);
+  const deepLinkAppliedRef = useRef(false);
 
   const applyOffline = useCallback(async (uid: string | null) => {
     setSyncPhase("offline_cached");
@@ -199,6 +202,22 @@ export function AgendaHome() {
       void client.removeChannel(channel);
     };
   }, [client, refresh]);
+
+  useEffect(() => {
+    if (state.kind !== "online" && !(state.kind === "offline" && state.view.kind !== "unavailable")) {
+      return;
+    }
+    if (deepLinkAppliedRef.current || typeof window === "undefined") return;
+    const link = parseAgendaDeepLink(window.location.href);
+    if (!link.focusOccurrenceKey && !link.scrollToTomorrow) return;
+
+    // Wait a frame so occurrence rows / Amanhã section are in the DOM.
+    const id = window.requestAnimationFrame(() => {
+      const applied = applyAgendaDeepLinkFocus(document, link);
+      if (applied) deepLinkAppliedRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [state]);
 
   if (state.kind === "loading") {
     return <p data-agenda="loading">Carregando…</p>;
