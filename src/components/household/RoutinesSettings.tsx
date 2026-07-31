@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  fetchCurrentHouseholdId,
   listChildren,
   listHouseholdMembers,
   type ChildRow,
@@ -16,6 +17,12 @@ import {
   type WeeklyRoutineListItem,
 } from "@/lib/household/routines";
 import { localDateInHousehold } from "@/lib/household/routine-form";
+import {
+  householdWriteErrorCopy,
+  isSchemaMissingError,
+  membershipMissingCopy,
+  schemaMissingCopy,
+} from "@/lib/household/setup-home";
 import { CASA_TARGET, listSharedTargets } from "@/lib/household/targets";
 
 const WEEKDAYS: { value: number; label: string }[] = [
@@ -28,7 +35,7 @@ const WEEKDAYS: { value: number; label: string }[] = [
   { value: 6, label: "Sáb" },
 ];
 
-function mapRoutineError(message?: string): string {
+function mapRoutineError(message?: string, code?: string): string {
   switch (message) {
     case "title_required":
       return "Informe um título.";
@@ -45,9 +52,13 @@ function mapRoutineError(message?: string): string {
     case "invalid_valid_range":
       return "Data final deve ser após a inicial.";
     case "household_missing":
-      return "Casa ainda não configurada no servidor.";
-    default:
-      return "Não foi possível cadastrar a rotina.";
+      return householdWriteErrorCopy(message, code);
+    default: {
+      const mapped = householdWriteErrorCopy(message, code);
+      return mapped === "Não foi possível salvar."
+        ? "Não foi possível cadastrar a rotina."
+        : mapped;
+    }
   }
 }
 
@@ -62,6 +73,7 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
   const [members, setMembers] = useState<HouseholdMemberRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [householdReady, setHouseholdReady] = useState(false);
 
   const [title, setTitle] = useState("");
   const [targetKey, setTargetKey] = useState<string>("casa");
@@ -80,6 +92,25 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
   );
 
   const refresh = useCallback(async () => {
+    const household = await fetchCurrentHouseholdId(client);
+    if (!household.ok) {
+      setHouseholdReady(false);
+      setError(
+        isSchemaMissingError(household.error.code, household.error.message)
+          ? schemaMissingCopy()
+          : membershipMissingCopy(),
+      );
+      setRoutines([]);
+      return;
+    }
+    if (!household.data) {
+      setHouseholdReady(false);
+      setError(membershipMissingCopy());
+      setRoutines([]);
+      return;
+    }
+    setHouseholdReady(true);
+
     const [routinesResult, childrenResult, membersResult] = await Promise.all([
       listWeeklyRoutines(client),
       listChildren(client),
@@ -129,7 +160,7 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
 
     setPending(false);
     if (!result.ok) {
-      setError(mapRoutineError(result.error.message));
+      setError(mapRoutineError(result.error.message, result.error.code));
       return;
     }
 
@@ -256,7 +287,7 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
           />
         </label>
 
-        <button type="submit" disabled={pending}>
+        <button type="submit" disabled={pending || !householdReady}>
           Adicionar rotina
         </button>
       </form>
