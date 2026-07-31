@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getPushConfig } from "@/lib/push/config";
-import { isInstalledPwa, readInstallProbe } from "@/lib/push/install";
-import { resolvePushStatus, type PushUiStatus } from "@/lib/push/status";
+import type { PushUiStatus } from "@/lib/push/status";
+import { PUSH_STATUS_COPY, readPushStatusSnapshot } from "@/lib/push/read-status";
 import {
   formatConnectivityLabel,
   resolveSettingsOpsStatus,
@@ -16,37 +15,6 @@ import {
   getLastSyncedAt,
   subscribeSyncPhase,
 } from "@/lib/sync/writes-gate";
-
-async function readPushStatus(): Promise<PushUiStatus> {
-  const config = getPushConfig();
-  const pushSupported =
-    typeof window !== "undefined" &&
-    "Notification" in window &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window;
-
-  if (!config) return "config-missing";
-  if (!pushSupported) return "unsupported";
-
-  const installed = isInstalledPwa(readInstallProbe());
-  const permission = Notification.permission;
-  let hasSubscription = false;
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    const existing = await registration.pushManager.getSubscription();
-    hasSubscription = existing !== null;
-  } catch {
-    hasSubscription = false;
-  }
-
-  return resolvePushStatus({
-    pushSupported: true,
-    vapidConfigured: true,
-    installed,
-    permission,
-    hasSubscription,
-  });
-}
 
 function subscribeOnline(cb: () => void) {
   window.addEventListener("online", cb);
@@ -78,7 +46,7 @@ export function OpsStatusSettings({ client }: { client: SupabaseClient | null })
   );
 
   useEffect(() => {
-    void readPushStatus().then(setPushStatus);
+    void readPushStatusSnapshot().then((snap) => setPushStatus(snap.status));
   }, [online]);
 
   useEffect(() => {
@@ -112,15 +80,7 @@ export function OpsStatusSettings({ client }: { client: SupabaseClient | null })
       <p data-ops-connectivity>{formatConnectivityLabel(status.connectivity)}</p>
       <p data-ops-last-sync>{status.lastSync.label}</p>
       <p data-ops-push-summary>
-        {pushStatus === "active"
-          ? "Notificações: ativas neste aparelho."
-          : pushStatus === "permission-required"
-            ? "Notificações: permissão necessária."
-            : pushStatus === "reinstall-required"
-              ? "Notificações: reinstalação ou reparo necessário."
-              : pushStatus === "config-missing"
-                ? "Notificações: não configuradas neste ambiente."
-                : "Notificações: indisponíveis neste navegador."}
+        {PUSH_STATUS_COPY[pushStatus].title}. {PUSH_STATUS_COPY[pushStatus].body}
       </p>
       <p data-ops-backup>{status.backupMessage}</p>
       <p data-ops-best-effort>

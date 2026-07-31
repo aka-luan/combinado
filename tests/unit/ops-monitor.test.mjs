@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  formatAdminMonitorReport,
-  parseAdminMonitorSnapshot,
-} from "../../src/lib/ops/admin-monitor.ts";
+  formatOpsMonitorReport,
+  parseOpsMonitorSnapshot,
+} from "../../src/lib/ops/monitor.ts";
 
-test("parseAdminMonitorSnapshot exposes cron, outbox, realtime, backup, and restore stamps", () => {
-  const snap = parseAdminMonitorSnapshot({
+test("parseOpsMonitorSnapshot exposes cron, outbox, realtime, backup, and restore stamps", () => {
+  const snap = parseOpsMonitorSnapshot({
     last_cron_at: "2026-07-31T21:00:00Z",
     outbox_pending_count: 2,
     outbox_failed_count: 1,
@@ -25,9 +25,9 @@ test("parseAdminMonitorSnapshot exposes cron, outbox, realtime, backup, and rest
   assert.equal(snap.lastRestoreRehearsalAt, "2026-07-28T12:00:00Z");
 });
 
-test("formatAdminMonitorReport is codes-only — no child, title, medicine, or instruction", () => {
-  const report = formatAdminMonitorReport(
-    parseAdminMonitorSnapshot({
+test("formatOpsMonitorReport is codes-only — no child, title, medicine, or instruction", () => {
+  const report = formatOpsMonitorReport(
+    parseOpsMonitorSnapshot({
       last_cron_at: "2026-07-31T21:00:00Z",
       outbox_pending_count: 0,
       outbox_failed_count: 0,

@@ -38,9 +38,9 @@ try {
   process.exit(1);
 }
 
-const { parseAdminMonitorSnapshot, formatAdminMonitorReport } = await import(
-  pathToFileURL(join(root, "src/lib/ops/admin-monitor.ts")).href
+const { parseOpsMonitorSnapshot, formatOpsMonitorReport } = await import(
+  pathToFileURL(join(root, "src/lib/ops/monitor.ts")).href
 );
 
-const snapshot = parseAdminMonitorSnapshot(row);
-process.stdout.write(formatAdminMonitorReport(snapshot) + "\n");
+const snapshot = parseOpsMonitorSnapshot(row);
+process.stdout.write(formatOpsMonitorReport(snapshot) + "\n");

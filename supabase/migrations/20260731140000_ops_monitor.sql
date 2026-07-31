@@ -348,3 +348,14 @@ $$;
 
 revoke all on function public.delete_household_total(text) from public;
 -- Service role / SQL Editor only — never exposed to the PWA.
+
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.record_cron_heartbeat(text, timestamptz) to service_role;
+    grant execute on function public.get_ops_monitor_snapshot() to service_role;
+    grant execute on function public.delete_household_total(text) to service_role;
+    grant execute on function public.purge_push_delivery_logs(interval) to service_role;
+  end if;
+end
+$$;

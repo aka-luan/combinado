@@ -58,9 +58,10 @@ instrução):
 Adultos autenticados **não** leem `ops_status` / outbox / o RPC de snapshot —
 auditoria completa não é navegável no app (PRD §17).
 
-Logs operacionais usam `src/lib/ops/redact.ts` / `sanitizeOperationalFields` e
-constraints de código curto (`^[a-z][a-z0-9_]{0,63}$`) em resultados da outbox
-e em `push_delivery_logs` (retenção 30 dias via `purge_push_delivery_logs`).
+Logs operacionais usam `src/lib/ops/redact.ts` (composto em
+`scripts/backup/with-redacted-logs.sh` / `record-status.mjs`) e constraints de
+código curto (`^[a-z][a-z0-9_]{0,63}$`) em resultados da outbox e em
+`push_delivery_logs` (retenção 30 dias via `purge_push_delivery_logs`).
 
 ## Bootstrap
 

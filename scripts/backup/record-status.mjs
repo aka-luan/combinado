@@ -15,8 +15,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "../..");
 
 async function loadRedact() {
-  const mod = await import(pathToFileURL(join(root, "src/lib/backup/redact.ts")).href);
-  return mod.redactBackupLog;
+  const backup = await import(pathToFileURL(join(root, "src/lib/backup/redact.ts")).href);
+  const ops = await import(pathToFileURL(join(root, "src/lib/ops/redact.ts")).href);
+  return (text) => ops.redactOperationalLog(backup.redactBackupLog(text));
 }
 
 function usage() {

@@ -1,6 +1,6 @@
-/** Administrative ops snapshot formatting (PRD §§17, 21) — codes and counts only. */
+/** Operational monitor snapshot formatting (PRD §§17, 21) — codes and counts only. */
 
-export type AdminMonitorSnapshot = {
+export type OpsMonitorSnapshot = {
   lastCronAt: string | null;
   outboxPendingCount: number;
   outboxFailedCount: number;
@@ -25,7 +25,7 @@ function asNonNegInt(value: unknown): number {
   return 0;
 }
 
-export function parseAdminMonitorSnapshot(row: unknown): AdminMonitorSnapshot | null {
+export function parseOpsMonitorSnapshot(row: unknown): OpsMonitorSnapshot | null {
   if (!row || typeof row !== "object") return null;
   const r = row as Record<string, unknown>;
   return {
@@ -51,8 +51,8 @@ function stamp(label: string, iso: string | null): string {
   return iso ? `${label}: ${formatPtBrInstant(iso)}` : `${label}: (nenhum)`;
 }
 
-/** Plain-text admin report — safe to paste into logs (no family content). */
-export function formatAdminMonitorReport(snapshot: AdminMonitorSnapshot | null): string {
+/** Plain-text operational report — safe to paste into logs (no family content). */
+export function formatOpsMonitorReport(snapshot: OpsMonitorSnapshot | null): string {
   if (!snapshot) {
     return "Monitoramento operacional: snapshot indisponível. Operação best effort (sem SLA).";
   }

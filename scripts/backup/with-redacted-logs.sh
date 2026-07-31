@@ -20,17 +20,24 @@ set -e
 
 export COMBINADO_REDACT_OUT="$out"
 export COMBINADO_REDACT_ERR="$err"
-export COMBINADO_REDACT_MODULE="$ROOT/src/lib/backup/redact.ts"
+export COMBINADO_REDACT_BACKUP_MODULE="$ROOT/src/lib/backup/redact.ts"
+export COMBINADO_REDACT_OPS_MODULE="$ROOT/src/lib/ops/redact.ts"
 
 NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--experimental-strip-types" \
   node --input-type=module <<'EOF'
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-const { redactBackupLog } = await import(pathToFileURL(process.env.COMBINADO_REDACT_MODULE).href);
+const { redactBackupLog } = await import(
+  pathToFileURL(process.env.COMBINADO_REDACT_BACKUP_MODULE).href
+);
+const { redactOperationalLog } = await import(
+  pathToFileURL(process.env.COMBINADO_REDACT_OPS_MODULE).href
+);
+const redact = (text) => redactOperationalLog(redactBackupLog(text));
 const out = readFileSync(process.env.COMBINADO_REDACT_OUT, "utf8");
 const err = readFileSync(process.env.COMBINADO_REDACT_ERR, "utf8");
-if (out) process.stdout.write(redactBackupLog(out));
-if (err) process.stderr.write(redactBackupLog(err));
+if (out) process.stdout.write(redact(out));
+if (err) process.stderr.write(redact(err));
 EOF
 
 exit "$rc"
