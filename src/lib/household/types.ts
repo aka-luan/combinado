@@ -3,6 +3,7 @@ export type ChildRow = {
   household_id: string;
   name: string;
   archived_at: string | null;
+  active_from: string;
   created_at: string;
   updated_at: string;
 };

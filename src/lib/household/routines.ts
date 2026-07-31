@@ -176,6 +176,31 @@ export async function archiveWeeklyRoutine(
   };
 }
 
+export async function restoreWeeklyRoutine(
+  client: SupabaseClient,
+  routineId: string,
+  expectedVersionId: string,
+): Promise<WeeklyRoutineMutationResult> {
+  const { data, error } = await client.rpc("restore_weekly_routine", {
+    p_routine_id: routineId,
+    p_expected_version_id: expectedVersionId,
+  });
+  if (error) return rpcMutationError(error);
+  const row = data as Record<string, unknown> | null;
+  if (!row || row.ok !== true || typeof row.routine_id !== "string") {
+    return { ok: false, error: { message: "invalid_routine_restore_response" } };
+  }
+  return {
+    ok: true,
+    data: {
+      routineId: row.routine_id,
+      versionId: typeof row.version_id === "string" ? row.version_id : undefined,
+      effectiveFrom: typeof row.effective_from === "string" ? row.effective_from : undefined,
+      already: row.already === true,
+    },
+  };
+}
+
 export type WeeklyRoutineExceptionInput = {
   routineId: string;
   localDate: string;

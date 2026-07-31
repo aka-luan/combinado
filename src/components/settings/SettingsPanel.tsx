@@ -7,6 +7,8 @@ import { ChildrenSettings } from "@/components/household/ChildrenSettings";
 import { MedicationsSettings } from "@/components/household/MedicationsSettings";
 import { EventsSettings } from "@/components/household/EventsSettings";
 import { RoutinesSettings } from "@/components/household/RoutinesSettings";
+import { AdultsSettings } from "@/components/household/AdultsSettings";
+import { HouseholdInformation } from "@/components/household/HouseholdInformation";
 import { PushSettings } from "@/components/push/PushSettings";
 import { clearUserAgendaCache, getDefaultAgendaCacheStore } from "@/lib/sync/agenda-cache";
 import { useWritesAllowed } from "@/lib/sync/use-writes-allowed";
@@ -42,12 +44,14 @@ export function SettingsPanel() {
             </p>
           ) : null}
           <fieldset disabled={!writesAllowed} data-settings-writes={writesAllowed ? "on" : "off"}>
+            {client && <AdultsSettings client={client} />}
             {client && <ChildrenSettings client={client} />}
             {client && <RoutinesSettings client={client} />}
             {client && <MedicationsSettings client={client} />}
             {client && <EventsSettings client={client} />}
             {client && <PushSettings client={client} />}
           </fieldset>
+          <HouseholdInformation />
           {!confirming ? (
             <button type="button" onClick={() => setConfirming(true)}>
               Sair

@@ -94,7 +94,7 @@ export function HouseholdHome() {
   }
 
   return (
-    <div data-household-home="ready">
+    <div data-household-home="ready" data-today-primary="true">
       <AgendaHome />
     </div>
   );

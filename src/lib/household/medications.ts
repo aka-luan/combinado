@@ -17,6 +17,7 @@ export { normalizeMedicationCreate } from "./medication-form";
 
 export type MedicationListItem = {
   id: string;
+  versionId: string;
   childId: string;
   name: string;
   instruction: string | null;
@@ -24,6 +25,7 @@ export type MedicationListItem = {
   validFrom: string;
   validUntil: string | null;
   interruptedAt: string | null;
+  archived: boolean;
 };
 
 export async function listMedications(
@@ -35,6 +37,7 @@ export async function listMedications(
       `
       id,
       medication_versions (
+        id,
         child_id,
         name,
         instruction,
@@ -43,6 +46,7 @@ export async function listMedications(
         valid_until,
         effective_from,
         interrupted_at,
+        archived,
         created_at
       )
     `,
@@ -66,6 +70,7 @@ export async function listMedications(
     })[0];
     items.push({
       id: row.id as string,
+      versionId: latest.id as string,
       childId: latest.child_id as string,
       name: latest.name as string,
       instruction: (latest.instruction as string | null) ?? null,
@@ -73,6 +78,7 @@ export async function listMedications(
       validFrom: latest.valid_from as string,
       validUntil: (latest.valid_until as string | null) ?? null,
       interruptedAt: (latest.interrupted_at as string | null) ?? null,
+      archived: Boolean(latest.archived),
     });
   }
 
@@ -129,4 +135,78 @@ export async function interruptMedicationImmediate(
     ok: true,
     data: { interruptedAt: row.interrupted_at, already: Boolean(row.already) },
   };
+}
+
+export type MedicationEditInput = MedicationCreateInput & {
+  medicationId: string;
+  expectedVersionId: string;
+};
+
+type MedicationMutationResult = MutationResult<{
+  medicationId: string;
+  versionId?: string;
+  effectiveFrom?: string;
+  already?: boolean;
+}>;
+
+function parseMedicationMutation(data: unknown, fallback: string): MedicationMutationResult {
+  const row = data as Record<string, unknown> | null;
+  if (!row || row.ok !== true || typeof row.medication_id !== "string") {
+    return { ok: false, error: { message: fallback } };
+  }
+  return {
+    ok: true,
+    data: {
+      medicationId: row.medication_id,
+      versionId: typeof row.version_id === "string" ? row.version_id : undefined,
+      effectiveFrom: typeof row.effective_from === "string" ? row.effective_from : undefined,
+      already: row.already === true,
+    },
+  };
+}
+
+export async function editMedication(
+  client: SupabaseClient,
+  input: MedicationEditInput,
+): Promise<MedicationMutationResult> {
+  const normalized = normalizeMedicationCreate(input);
+  if (!normalized.ok) return { ok: false, error: { message: normalized.error } };
+  const { data, error } = await client.rpc("edit_medication", {
+    p_medication_id: input.medicationId,
+    p_expected_version_id: input.expectedVersionId,
+    p_child_id: normalized.data.childId,
+    p_name: normalized.data.name,
+    p_instruction: normalized.data.instruction,
+    p_slots: normalized.data.slots,
+    p_valid_from: normalized.data.validFrom,
+    p_valid_until: normalized.data.validUntil,
+  });
+  if (error) return { ok: false, error: { message: error.message, code: error.code } };
+  return parseMedicationMutation(data, "invalid_medication_edit_response");
+}
+
+export async function archiveMedication(
+  client: SupabaseClient,
+  medicationId: string,
+  expectedVersionId: string,
+): Promise<MedicationMutationResult> {
+  const { data, error } = await client.rpc("archive_medication", {
+    p_medication_id: medicationId,
+    p_expected_version_id: expectedVersionId,
+  });
+  if (error) return { ok: false, error: { message: error.message, code: error.code } };
+  return parseMedicationMutation(data, "invalid_medication_archive_response");
+}
+
+export async function restoreMedication(
+  client: SupabaseClient,
+  medicationId: string,
+  expectedVersionId: string,
+): Promise<MedicationMutationResult> {
+  const { data, error } = await client.rpc("restore_medication", {
+    p_medication_id: medicationId,
+    p_expected_version_id: expectedVersionId,
+  });
+  if (error) return { ok: false, error: { message: error.message, code: error.code } };
+  return parseMedicationMutation(data, "invalid_medication_restore_response");
 }

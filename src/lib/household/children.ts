@@ -21,7 +21,7 @@ export async function listChildren(
 ): Promise<MutationResult<ChildRow[]>> {
   const { data, error } = await client
     .from("children")
-    .select("id, household_id, name, archived_at, created_at, updated_at")
+    .select("id, household_id, name, archived_at, active_from, created_at, updated_at")
     .order("name", { ascending: true });
 
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
@@ -58,7 +58,7 @@ export async function createChild(
   const { data, error } = await client
     .from("children")
     .insert({ household_id: household.data, name })
-    .select("id, household_id, name, archived_at, created_at, updated_at")
+    .select("id, household_id, name, archived_at, active_from, created_at, updated_at")
     .single();
 
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
@@ -79,7 +79,7 @@ export async function renameChild(
     .from("children")
     .update({ name })
     .eq("id", childId)
-    .select("id, household_id, name, archived_at, created_at, updated_at")
+    .select("id, household_id, name, archived_at, active_from, created_at, updated_at")
     .single();
 
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
@@ -89,33 +89,33 @@ export async function renameChild(
 export async function archiveChild(
   client: SupabaseClient,
   childId: string,
-): Promise<MutationResult<ChildRow>> {
-  const { data, error } = await client
-    .from("children")
-    .update({ archived_at: new Date().toISOString() })
-    .eq("id", childId)
-    .is("archived_at", null)
-    .select("id, household_id, name, archived_at, created_at, updated_at")
-    .single();
-
+): Promise<MutationResult<{ id: string; archived: boolean; effectiveFrom: string }>> {
+  const { data, error } = await client.rpc("archive_child", { p_child_id: childId });
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
-  return { ok: true, data: data as ChildRow };
+  const row = data as Record<string, unknown> | null;
+  if (row?.ok !== true || typeof row.child_id !== "string" || typeof row.effective_from !== "string") {
+    return { ok: false, error: { message: "invalid_child_archive_response" } };
+  }
+  return {
+    ok: true,
+    data: { id: row.child_id, archived: row.archived === true, effectiveFrom: row.effective_from },
+  };
 }
 
 export async function unarchiveChild(
   client: SupabaseClient,
   childId: string,
-): Promise<MutationResult<ChildRow>> {
-  const { data, error } = await client
-    .from("children")
-    .update({ archived_at: null })
-    .eq("id", childId)
-    .not("archived_at", "is", null)
-    .select("id, household_id, name, archived_at, created_at, updated_at")
-    .single();
-
+): Promise<MutationResult<{ id: string; archived: boolean; effectiveFrom: string }>> {
+  const { data, error } = await client.rpc("reactivate_child", { p_child_id: childId });
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
-  return { ok: true, data: data as ChildRow };
+  const row = data as Record<string, unknown> | null;
+  if (row?.ok !== true || typeof row.child_id !== "string" || typeof row.effective_from !== "string") {
+    return { ok: false, error: { message: "invalid_child_reactivation_response" } };
+  }
+  return {
+    ok: true,
+    data: { id: row.child_id, archived: row.archived === true, effectiveFrom: row.effective_from },
+  };
 }
 
 export { partitionChildren } from "./partition";

@@ -27,6 +27,7 @@ test("partitionChildren separates active and archived without dropping identity"
       household_id: "h",
       name: "A",
       archived_at: null,
+      active_from: "1900-01-01",
       created_at: "",
       updated_at: "",
     },
@@ -35,6 +36,7 @@ test("partitionChildren separates active and archived without dropping identity"
       household_id: "h",
       name: "B",
       archived_at: "2026-01-01T00:00:00Z",
+      active_from: "1900-01-01",
       created_at: "",
       updated_at: "",
     },
@@ -44,4 +46,23 @@ test("partitionChildren separates active and archived without dropping identity"
   assert.equal(archived.length, 1);
   assert.equal(archived[0].id, "2");
   assert.equal(archived[0].name, "B");
+});
+
+test("partitionChildren keeps next-day reactivation archived for today", () => {
+  const { active, archived } = partitionChildren(
+    [
+      {
+        id: "future",
+        household_id: "h",
+        name: "Nina",
+        archived_at: null,
+        active_from: "2026-08-01",
+        created_at: "",
+        updated_at: "",
+      },
+    ],
+    "2026-07-31",
+  );
+  assert.equal(active.length, 0);
+  assert.equal(archived[0].id, "future");
 });

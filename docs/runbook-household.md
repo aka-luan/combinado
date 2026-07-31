@@ -159,3 +159,21 @@ horário, trocar/remover o Responsável ou editar esses campos juntos. Cada aç�
 grava uma exceção imutável para `rotina + data local`; `Restaurar rotina` grava
 outra exceção auditada e volta ao padrão. A RPC aceita somente Hoje/Amanhã e
 detecta conflitos com a versão/exceção que o Adulto leu.
+
+### Catálogo e manutenção (M6 / issue #10)
+
+Aplicar também `supabase/migrations/20260731110000_household_maintenance.sql` e
+recarregar o cache do PostgREST. Depois dessa migration, Configurações deixa de
+depender de acesso administrativo para a manutenção comum:
+
+- rotinas e medicamentos podem ser editados, arquivados e reativados; a alteração
+  de catálogo vira versão efetiva amanhã e não reescreve o histórico;
+- crianças só são arquivadas quando não há rotina ou medicamento ativo dependente;
+  reativação grava `active_from` para amanhã e não recria ocorrências anteriores;
+- compromissos avulsos cancelados permanecem no catálogo como arquivados;
+- os dois Adultos aparecem em uma lista compartilhada, mas troca de Adulto continua
+  administrativa e deve preservar autoria, confirmações e auditoria.
+
+O PWA mostra o estado de backup como informação operacional. O backup real continua
+sendo o dump cifrado executado pelo GitHub Actions, conforme PRD §16; nenhuma chave
+ou senha de backup chega ao bundle estático.

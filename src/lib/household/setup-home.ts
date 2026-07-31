@@ -36,6 +36,8 @@ export function extractAppErrorToken(message?: string): string | undefined {
     "name_required",
     "child_required",
     "child_not_in_household",
+    "child_not_found",
+    "child_has_active_dependencies",
     "slots_required",
     "duplicate_slots",
     "invalid_slot",

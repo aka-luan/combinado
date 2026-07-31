@@ -117,7 +117,17 @@ begin
   end if;
 
   update public.children set name = 'Mia Renomeada' where id = child_id;
-  update public.children set archived_at = now() where id = child_id;
+  begin
+    update public.children set archived_at = now() where id = child_id;
+    raise exception 'direct child archival should fail';
+  exception
+    when others then
+      if sqlerrm = 'direct child archival should fail'
+        or sqlerrm not like '%child_maintenance_rpc_required%' then
+        raise;
+      end if;
+  end;
+  perform public.archive_child(child_id, now());
 
   if (select archived_at is not null from public.children where id = child_id) is not true then
     raise exception 'archive did not preserve child row';
@@ -153,7 +163,7 @@ begin
     raise exception 'adult2 cannot see archived child';
   end if;
 
-  update public.children set archived_at = null where id = child_id;
+  perform public.reactivate_child(child_id, now());
   insert into public.children (household_id, name) values (hid, 'Sam');
   select count(*) into n from public.children where archived_at is null;
   if n < 2 then

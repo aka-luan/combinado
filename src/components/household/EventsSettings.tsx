@@ -157,6 +157,44 @@ export function EventsSettings({ client }: Props) {
   }
 
   if (events === null) return <p data-events-status="loading">Carregando compromissos…</p>;
+  const activeEvents = events.filter((event) => !event.cancelledAt);
+  const archivedEvents = events.filter((event) => event.cancelledAt);
+
+  function renderEvent(event: OneOffEventRow) {
+    const canCancel = !event.cancelledAt && event.localDate >= today;
+    return (
+      <li key={event.id} data-event-id={event.id} data-event-archived={event.cancelledAt ? "true" : undefined}>
+        <span>
+          {formatDate(event.localDate)}
+          {event.scheduledTime ? ` · ${event.scheduledTime}` : " · Sem horário"}
+          {" · "}
+          {event.title}
+          {" · "}
+          {event.targetKind === "casa" ? "Casa" : childNames.get(event.childId ?? "") ?? "criança"}
+          {event.responsibleUserId
+            ? ` · ${memberNames.get(event.responsibleUserId) ?? "responsável"}`
+            : " · sem responsável"}
+          {event.cancelledAt ? " · cancelado" : ""}
+        </span>
+        {canCancel ? (
+          cancelId === event.id ? (
+            <span data-event-list-cancel-confirm>
+              <button type="button" disabled={pending} onClick={() => void handleCancel(event.id)}>
+                Confirmar cancelamento
+              </button>
+              <button type="button" disabled={pending} onClick={() => setCancelId(null)}>
+                Voltar
+              </button>
+            </span>
+          ) : (
+            <button type="button" disabled={pending} onClick={() => setCancelId(event.id)}>
+              Cancelar
+            </button>
+          )
+        ) : null}
+      </li>
+    );
+  }
 
   return (
     <section data-events-settings>
@@ -263,46 +301,16 @@ export function EventsSettings({ client }: Props) {
       </form>
 
       <h3>Próximos compromissos</h3>
-      {events.length === 0 ? (
+      {activeEvents.length === 0 ? (
         <p data-events-empty>Nenhum compromisso avulso ainda.</p>
       ) : (
-        <ul data-events-list>
-          {events.map((event) => {
-            const canCancel = !event.cancelledAt && event.localDate >= today;
-            return (
-              <li key={event.id} data-event-id={event.id}>
-                <span>
-                  {formatDate(event.localDate)}
-                  {event.scheduledTime ? ` · ${event.scheduledTime}` : " · Sem horário"}
-                  {" · "}
-                  {event.title}
-                  {" · "}
-                  {event.targetKind === "casa" ? "Casa" : childNames.get(event.childId ?? "") ?? "criança"}
-                  {event.responsibleUserId
-                    ? ` · ${memberNames.get(event.responsibleUserId) ?? "responsável"}`
-                    : " · sem responsável"}
-                  {event.cancelledAt ? " · cancelado" : ""}
-                </span>
-                {canCancel ? (
-                  cancelId === event.id ? (
-                    <span data-event-list-cancel-confirm>
-                      <button type="button" disabled={pending} onClick={() => void handleCancel(event.id)}>
-                        Confirmar cancelamento
-                      </button>
-                      <button type="button" disabled={pending} onClick={() => setCancelId(null)}>
-                        Voltar
-                      </button>
-                    </span>
-                  ) : (
-                    <button type="button" disabled={pending} onClick={() => setCancelId(event.id)}>
-                      Cancelar
-                    </button>
-                  )
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <ul data-events-list>{activeEvents.map(renderEvent)}</ul>
+      )}
+      <h3>Cancelados</h3>
+      {archivedEvents.length === 0 ? (
+        <p data-events-archived-empty>Nenhum compromisso cancelado.</p>
+      ) : (
+        <ul data-events-archived>{archivedEvents.map(renderEvent)}</ul>
       )}
     </section>
   );

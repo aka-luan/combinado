@@ -14,11 +14,13 @@ import {
 import { notifyHouseholdChanged } from "@/lib/household/events";
 import { partitionChildren } from "@/lib/household/partition";
 import {
+  extractAppErrorToken,
   householdWriteErrorCopy,
   isSchemaMissingError,
   membershipMissingCopy,
   schemaMissingCopy,
 } from "@/lib/household/setup-home";
+import { localDateInHousehold } from "@/lib/household/routine-form";
 import { CASA_TARGET } from "@/lib/household/targets";
 
 export function ChildrenSettings({ client }: { client: SupabaseClient }) {
@@ -114,7 +116,11 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
     const result = await archiveChild(client, childId);
     setPending(false);
     if (!result.ok) {
-      setError("Não foi possível arquivar.");
+      setError(
+        extractAppErrorToken(result.error.message) === "child_has_active_dependencies"
+          ? "Resolva ou arquive as rotinas e os medicamentos ativos desta criança antes de arquivar."
+          : "Não foi possível arquivar.",
+      );
       return;
     }
     await afterMutation(true);
@@ -126,7 +132,7 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
     const result = await unarchiveChild(client, childId);
     setPending(false);
     if (!result.ok) {
-      setError("Não foi possível reativar.");
+      setError("Não foi possível reativar a criança.");
       return;
     }
     await afterMutation(true);
@@ -136,7 +142,7 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
     return <p data-children-status="loading">Carregando crianças…</p>;
   }
 
-  const { active, archived } = partitionChildren(children);
+  const { active, archived } = partitionChildren(children, localDateInHousehold());
 
   return (
     <section data-children-settings>
@@ -212,9 +218,14 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
           <ul data-children-archived>
             {archived.map((child) => (
               <li key={child.id} data-child-id={child.id} data-archived>
-                <span>{child.name}</span>
+                <span>
+                  {child.name}
+                  {child.active_from > localDateInHousehold()
+                    ? ` · reativação em ${child.active_from}`
+                    : ""}
+                </span>
                 <button type="button" disabled={pending} onClick={() => handleUnarchive(child.id)}>
-                  Reativar
+                  Reativar amanhã
                 </button>
               </li>
             ))}

@@ -7,6 +7,7 @@ import {
   createWeeklyRoutine,
   editWeeklyRoutine,
   listWeeklyRoutines,
+  restoreWeeklyRoutine,
   type WeeklyRoutineEditInput,
   type WeeklyRoutineListItem,
 } from "@/lib/household/routines";
@@ -60,6 +61,8 @@ function mapRoutineError(message?: string, code?: string): string {
       return "Esta rotina já foi arquivada.";
     case "routine_not_active_tomorrow":
       return "A rotina precisa continuar válida amanhã para ser editada.";
+    case "invalid_routine_restore_response":
+      return "Não foi possível reativar a rotina.";
     case "invalid_weekday":
       return "Escolha dias válidos da semana.";
     default: {
@@ -234,6 +237,19 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
     setError(null);
     const result = await archiveWeeklyRoutine(client, routine.id, routine.versionId);
     setArchiveId(null);
+    setPending(false);
+    if (!result.ok) {
+      setError(mapRoutineError(result.error.message, result.error.code));
+      return;
+    }
+    notifyHouseholdChanged();
+    await refresh();
+  }
+
+  async function handleRestore(routine: WeeklyRoutineListItem) {
+    setPending(true);
+    setError(null);
+    const result = await restoreWeeklyRoutine(client, routine.id, routine.versionId);
     setPending(false);
     if (!result.ok) {
       setError(mapRoutineError(result.error.message, result.error.code));
@@ -418,6 +434,9 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
           {archivedRoutines.map((routine) => (
             <li key={routine.id} data-routine-id={routine.id} data-routine-archived="true">
               <span>{routine.title} · {weekdayLabels(routine.weekdays)}</span>
+              <button type="button" disabled={pending} onClick={() => void handleRestore(routine)}>
+                Reativar amanhã
+              </button>
             </li>
           ))}
         </ul>

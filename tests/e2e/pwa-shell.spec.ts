@@ -75,3 +75,32 @@ test("shell opens offline after one successful load and reports the offline stat
 
   await context.setOffline(false);
 });
+
+test.describe("authenticated household shell", () => {
+  test.skip(
+    !process.env.TEST_LOGIN_USERNAME || !process.env.TEST_LOGIN_PASSWORD,
+    "Hosted authenticated UI credentials are required for this smoke test",
+  );
+
+  test("second Adult lands on Hoje and sees the complete settings catalog", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Usar senha temporária" }).click();
+    await page.getByLabel("E-mail").fill(process.env.TEST_LOGIN_USERNAME!);
+    await page.getByLabel("Senha temporária").fill(process.env.TEST_LOGIN_PASSWORD!);
+    await page.getByRole("button", { name: "Entrar" }).click();
+
+    await expect(page.locator('[data-today-primary="true"]')).toBeVisible();
+    await page.getByRole("button", { name: "Configurações" }).click();
+    await expect(page.locator("[data-adults-settings]")).toBeVisible();
+    await expect(page.locator("[data-children-settings]")).toBeVisible();
+    await expect(page.locator("[data-routines-settings]")).toBeVisible();
+    await expect(page.locator("[data-medications-settings]")).toBeVisible();
+    await expect(page.locator("[data-events-settings]")).toBeVisible();
+    await expect(page.locator("[data-push-settings]")).toBeVisible();
+    await expect(page.locator("[data-household-information]")).toBeVisible();
+
+    await page.getByRole("button", { name: "Sair" }).click();
+    await page.getByRole("button", { name: "Confirmar saída" }).click();
+    await expect(page.locator('[data-login-step="email"]')).toBeVisible();
+  });
+});
