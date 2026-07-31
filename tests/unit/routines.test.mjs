@@ -56,6 +56,23 @@ test("normalizeWeeklyRoutineCreate rejects blank title", () => {
   assert.equal(result.error, "title_required");
 });
 
+test("normalizeWeeklyRoutineCreate rejects titles longer than 120 characters", () => {
+  const result = normalizeWeeklyRoutineCreate({
+    title: "a".repeat(121),
+    targetKind: "casa",
+    childId: null,
+    weekdays: [1],
+    scheduledTime: "09:00",
+    requiresConfirmation: false,
+    defaultOwnerUserId: null,
+    validFrom: "2026-07-30",
+    validUntil: null,
+  });
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.error, "title_too_long");
+});
+
 test("normalizeWeeklyRoutineCreate rejects informational routine with owner", () => {
   const result = normalizeWeeklyRoutineCreate({
     title: "Aviso",

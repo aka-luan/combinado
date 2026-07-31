@@ -65,12 +65,11 @@ export function renderServiceWorker(version, precacheFiles) {
 const CACHE_NAME = "combinado-app-shell-${version}";
 const PRECACHE_URLS = ${JSON.stringify(precacheFiles, null, 2)};
 
+// Install precaches in the background but does NOT skipWaiting — the client
+// offers the update only when no confirmation/edit is in progress (PRD §18).
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
   );
 });
 
@@ -87,6 +86,12 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {

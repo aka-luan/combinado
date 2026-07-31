@@ -59,6 +59,18 @@ test("renderServiceWorker embeds a versioned cache name and precache list", () =
   assert.match(sw, /cache\.addAll\(PRECACHE_URLS\)/);
 });
 
+test("renderServiceWorker downloads in the background without auto-activating", () => {
+  const sw = renderServiceWorker("abc123", ["/"]);
+
+  const installHandler = sw.slice(
+    sw.indexOf('addEventListener("install"'),
+    sw.indexOf('addEventListener("activate"'),
+  );
+  assert.doesNotMatch(installHandler, /skipWaiting/);
+  assert.match(sw, /event\.data\.type === "SKIP_WAITING"/);
+  assert.match(sw, /self\.skipWaiting\(\)/);
+});
+
 test("renderServiceWorker never writes runtime responses into the cache", () => {
   const sw = renderServiceWorker("abc123", ["/index.html"]);
 

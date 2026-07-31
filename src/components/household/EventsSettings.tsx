@@ -12,6 +12,8 @@ import { listChildren } from "@/lib/household/children";
 import { listHouseholdMembers } from "@/lib/household/children";
 import { localDateInHousehold } from "@/lib/household/routine-form";
 import { notifyHouseholdChanged } from "@/lib/household/events";
+import { OCCURRENCE_TITLE_MAX_LENGTH } from "@/lib/agenda/title-limits";
+import { useInteractionBusy } from "@/lib/pwa/use-interaction-busy";
 
 type Props = { client: SupabaseClient };
 
@@ -64,6 +66,7 @@ export function EventsSettings({ client }: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
+  useInteractionBusy(pending || cancelId !== null || title.trim().length > 0);
 
   const childNames = useMemo(
     () => new Map(children.map((child) => [child.id, child.name])),
@@ -209,7 +212,7 @@ export function EventsSettings({ client }: Props) {
           <input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            maxLength={120}
+            maxLength={OCCURRENCE_TITLE_MAX_LENGTH}
             autoComplete="off"
             disabled={pending}
             required

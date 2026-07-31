@@ -46,6 +46,7 @@ export function normalizeWeeklyRoutineCreate(
 ): NormalizeRoutineResult {
   const title = input.title.trim();
   if (!title) return { ok: false, error: "title_required" };
+  if (title.length > 120) return { ok: false, error: "title_too_long" };
 
   if (input.targetKind !== "casa" && input.targetKind !== "child") {
     return { ok: false, error: "invalid_target_kind" };

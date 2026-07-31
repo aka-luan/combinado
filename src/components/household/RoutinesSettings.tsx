@@ -21,6 +21,8 @@ import {
 import { notifyHouseholdChanged } from "@/lib/household/events";
 import { partitionChildren } from "@/lib/household/partition";
 import { localDateInHousehold } from "@/lib/household/routine-form";
+import { OCCURRENCE_TITLE_MAX_LENGTH } from "@/lib/agenda/title-limits";
+import { useInteractionBusy } from "@/lib/pwa/use-interaction-busy";
 import {
   householdWriteErrorCopy,
   isSchemaMissingError,
@@ -43,6 +45,8 @@ function mapRoutineError(message?: string, code?: string): string {
   switch (message) {
     case "title_required":
       return "Informe um título.";
+    case "title_too_long":
+      return "O título deve ter até 120 caracteres.";
     case "weekdays_required":
       return "Escolha ao menos um dia da semana.";
     case "child_required":
@@ -110,6 +114,7 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
     () => (routines ?? []).filter((routine) => !routine.archived),
     [routines],
   );
+  useInteractionBusy(pending || editingId !== null || archiveId !== null || title.trim().length > 0);
   const archivedRoutines = useMemo(
     () => (routines ?? []).filter((routine) => routine.archived),
     [routines],
@@ -279,6 +284,7 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
             onChange={(event) => setTitle(event.target.value)}
             autoComplete="off"
             disabled={pending}
+            maxLength={OCCURRENCE_TITLE_MAX_LENGTH}
             required
           />
         </label>

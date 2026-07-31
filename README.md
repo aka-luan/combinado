@@ -101,6 +101,9 @@ Nenhuma credencial do Cloudflare ou do Supabase é armazenada neste repositório
 - `public/manifest.webmanifest` define nome, ícones, `display: standalone` e `id` estável.
 - `scripts/generate-sw.mjs` roda após o build e escreve `out/sw.js`: cache com nome
   versionado (hash do conteúdo exportado) contendo somente a casca pública do app.
-  Cada deploy invalida o cache anterior.
+  Cada deploy invalida o cache anterior. A nova versão baixa em segundo plano e só é
+  oferecida quando não há confirmação/edição em andamento (PRD §18).
 - Após um primeiro carregamento com sucesso, a casca abre offline; login e dados seguem
   exigindo conexão, o que é sinalizado na tela.
+- Checklist manual de acessibilidade/performance nos dois iPhones:
+  [docs/checklist-a11y-perf.md](./docs/checklist-a11y-perf.md).
