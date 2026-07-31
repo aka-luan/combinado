@@ -67,6 +67,34 @@ A RPC autenticada é `create_weekly_routine` (ligada a `current_household_id()`)
 Edição, versionamento, exceções e arquivo de rotinas ficam em tickets posteriores
 (#9 / #10). Rotina informativa (sem confirmação) não pode ter responsável.
 
+### Medicamentos (M3 / issue #6)
+
+O app em Cloudflare Pages só ganha a UI; o banco precisa da migration
+`supabase/migrations/20260730200000_medications.sql` aplicada no **mesmo**
+projeto Supabase do `NEXT_PUBLIC_SUPABASE_URL`.
+
+No SQL Editor (service role):
+
+1. Cole e execute o conteúdo de `20260730200000_medications.sql`.
+2. Recarregue o cache do PostgREST:
+
+```sql
+notify pgrst, 'reload schema';
+```
+
+3. Confirme:
+
+```sql
+select to_regprocedure(
+  'public.create_medication(uuid, text, text, text[], date, date)'
+) is not null as create_medication_ready;
+
+select to_regclass('public.medications') is not null as medications_table_ready;
+```
+
+Sem isso, Configurações → Medicamentos mostra formulário mas falha ao salvar
+(RPC/tabela ausente). Com a migration aplicada, o Adulto cadastra doses no PWA.
+
 ### Semente SQL (só testes / service role)
 
 `seed_weekly_routine` **não** é concedida a `authenticated`. Use só em testes

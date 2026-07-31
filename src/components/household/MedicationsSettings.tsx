@@ -12,13 +12,24 @@ import {
 } from "@/lib/household/medications";
 import { localDateInHousehold } from "@/lib/household/routine-form";
 import { partitionChildren } from "@/lib/household/partition";
+import {
+  extractAppErrorToken,
+  isSchemaMissingError,
+  medicationSchemaMissingCopy,
+} from "@/lib/household/setup-home";
 
-function mapMedicationError(message?: string): string {
-  switch (message) {
+function mapMedicationError(message?: string, code?: string): string {
+  if (isSchemaMissingError(code, message)) {
+    return medicationSchemaMissingCopy();
+  }
+  const token = extractAppErrorToken(message) ?? message;
+  switch (token) {
     case "name_required":
       return "Informe o nome do medicamento.";
     case "child_required":
       return "Escolha a criança.";
+    case "child_not_in_household":
+      return "A criança selecionada não está ativa nesta Casa.";
     case "slots_required":
       return "Informe ao menos um horário.";
     case "duplicate_slots":
@@ -27,12 +38,16 @@ function mapMedicationError(message?: string): string {
       return "Horário inválido (use HH:mm).";
     case "valid_from_required":
       return "Informe a data inicial.";
+    case "invalid_valid_until":
+      return "Data final inválida.";
     case "invalid_valid_range":
       return "Data final deve ser após a inicial.";
     case "household_missing":
       return "Casa ainda não configurada no servidor.";
     default:
-      return "Não foi possível salvar o medicamento.";
+      return message && message.length < 160 && !message.includes("\n")
+        ? `Não foi possível salvar o medicamento (${message}).`
+        : "Não foi possível salvar o medicamento.";
   }
 }
 
@@ -58,7 +73,11 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
       listChildren(client),
     ]);
     if (!medsResult.ok) {
-      setError("Não foi possível carregar os medicamentos.");
+      setError(
+        isSchemaMissingError(medsResult.error.code, medsResult.error.message)
+          ? medicationSchemaMissingCopy()
+          : "Não foi possível carregar os medicamentos.",
+      );
       setMedications([]);
     } else {
       setMedications(medsResult.data);
@@ -96,7 +115,7 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
 
     setPending(false);
     if (!result.ok) {
-      setError(mapMedicationError(result.error.message));
+      setError(mapMedicationError(result.error.message, result.error.code));
       return;
     }
 

@@ -115,3 +115,20 @@ test("isHouseholdSetupNeeded is true only with no active children", () => {
   assert.equal(isHouseholdSetupNeeded(0), true);
   assert.equal(isHouseholdSetupNeeded(1), false);
 });
+
+test("medication schema errors point at the medications migration", async () => {
+  const {
+    extractAppErrorToken,
+    isSchemaMissingError,
+    medicationSchemaMissingCopy,
+  } = await import("../../src/lib/household/setup-home.ts");
+  assert.equal(
+    isSchemaMissingError(
+      "PGRST202",
+      "Could not find the function public.create_medication(...) in the schema cache",
+    ),
+    true,
+  );
+  assert.match(medicationSchemaMissingCopy(), /20260730200000_medications/);
+  assert.equal(extractAppErrorToken("P0001: child_not_in_household"), "child_not_in_household");
+});
