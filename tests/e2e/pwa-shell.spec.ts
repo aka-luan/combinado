@@ -91,6 +91,7 @@ test.describe("authenticated household shell", () => {
 
     await expect(page.locator('[data-today-primary="true"]')).toBeVisible();
     await page.getByRole("button", { name: "Configurações" }).click();
+    await expect(page.locator("[data-ops-status]")).toBeVisible();
     await expect(page.locator("[data-adults-settings]")).toBeVisible();
     await expect(page.locator("[data-children-settings]")).toBeVisible();
     await expect(page.locator("[data-routines-settings]")).toBeVisible();
