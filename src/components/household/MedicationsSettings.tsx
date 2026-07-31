@@ -23,6 +23,7 @@ import {
   medicationSchemaMissingCopy,
   schemaMissingCopy,
 } from "@/lib/household/setup-home";
+import { useInteractionBusy } from "@/lib/pwa/use-interaction-busy";
 
 function mapMedicationError(message?: string, code?: string): string {
   if (isSchemaMissingError(code, message)) return medicationSchemaMissingCopy();
@@ -78,6 +79,13 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
   const [slotsText, setSlotsText] = useState("08:00");
   const [validFrom, setValidFrom] = useState(() => localDateInHousehold());
   const [validUntil, setValidUntil] = useState("");
+  useInteractionBusy(
+    pending ||
+      editingId !== null ||
+      interruptConfirmId !== null ||
+      archiveConfirmId !== null ||
+      name.trim().length > 0,
+  );
 
   const activeChildren = useMemo(() => partitionChildren(children).active, [children]);
   const activeMedications = useMemo(

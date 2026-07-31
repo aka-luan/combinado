@@ -272,6 +272,17 @@ main {
 
 .occurrence__title {
   font-size: 1.05rem;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.occurrence__title--full {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
 }
 
 .occurrence__target,
@@ -290,9 +301,19 @@ main {
   align-items: center;
 }
 
+.occurrence__actions button,
+.occurrence__details,
+.pwa-update-banner button,
+[data-settings-content] button,
+[data-login-step] button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 .occurrence__actions button {
   font: inherit;
   font-size: 0.9rem;
+  padding: 0.45rem 0.75rem;
 }
 
 .occurrence__alert {
@@ -364,4 +385,41 @@ main {
 
 [data-events-error] {
   color: light-dark(#b91c1c, #fca5a5);
+}
+
+.pwa-update-banner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  background: light-dark(#0f172a, #e2e8f0);
+  color: light-dark(#f8fafc, #0f172a);
+  text-align: center;
+}
+
+.pwa-update-banner p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.pwa-update-banner button {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid currentColor;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pwa-update-banner button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }

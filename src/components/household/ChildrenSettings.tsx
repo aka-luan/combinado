@@ -22,6 +22,7 @@ import {
 } from "@/lib/household/setup-home";
 import { localDateInHousehold } from "@/lib/household/routine-form";
 import { CASA_TARGET } from "@/lib/household/targets";
+import { useInteractionBusy } from "@/lib/pwa/use-interaction-busy";
 
 export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   const [children, setChildren] = useState<ChildRow[] | null>(null);
@@ -31,6 +32,7 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  useInteractionBusy(pending || editingId !== null || newName.trim().length > 0);
 
   const refresh = useCallback(async () => {
     const household = await fetchCurrentHouseholdId(client);

@@ -31,6 +31,8 @@ import {
   undoDeadlineFromServer,
 } from "@/lib/agenda/presentation";
 import type { SnapshotOccurrence } from "@/lib/agenda/types";
+import { runWithSeparatedPhases } from "@/lib/pwa/action-phases";
+import { useInteractionBusy } from "@/lib/pwa/use-interaction-busy";
 
 type Props = {
   occurrence: SnapshotOccurrence;
@@ -68,6 +70,14 @@ export function OccurrenceRow({
   const [routineCancel, setRoutineCancel] = useState(occurrence.status === "cancelled");
   const [routineMembers, setRoutineMembers] = useState<HouseholdMemberRow[]>([]);
   const [, setTick] = useState(0);
+
+  const editingInProgress =
+    busy ||
+    earlyPrompt ||
+    correctPrompt ||
+    cancelPrompt ||
+    routineAction !== null;
+  useInteractionBusy(editingInProgress);
 
   const confirmable =
     (isConfirmableDose(occurrence, day) || isConfirmableEvent(occurrence, day)) &&
@@ -121,64 +131,70 @@ export function OccurrenceRow({
 
   async function runConfirm(acknowledgeEarly: boolean) {
     if (!client) return;
-    setBusy(true);
-    setFeedback(null);
     setEarlyPrompt(false);
 
-    if (occurrence.source === "event") {
-      const result = await completeOneOffEvent(client, occurrence.source_id);
-      if (result.ok) {
-        await onChanged();
+    await runWithSeparatedPhases({
+      onImmediateFeedback: () => {
+        setBusy(true);
+        setFeedback(null);
+      },
+      persist: async () => {
+        if (occurrence.source === "event") {
+          const result = await completeOneOffEvent(client, occurrence.source_id);
+          if (result.ok) {
+            await onChanged();
+            setBusy(false);
+            return;
+          }
+          if (result.code === "already_completed") {
+            const when = formatConfirmTime(result.confirmedAt ?? "", timezone);
+            const who = result.confirmedByDisplayName ?? "Outro adulto";
+            setFeedback(`Já concluído por ${who}${when ? ` às ${when}` : ""}.`);
+            await onChanged();
+          } else {
+            setFeedback("Não foi possível concluir o compromisso.");
+          }
+          setBusy(false);
+          return;
+        }
+
+        if (occurrence.source !== "medication" || !occurrence.slot) {
+          setBusy(false);
+          return;
+        }
+
+        const result = await confirmDose(client, {
+          medicationId: occurrence.source_id,
+          localDate: occurrence.local_date,
+          slot: occurrence.slot,
+          acknowledgeEarly,
+        });
+
+        if (result.ok) {
+          await onChanged();
+          setBusy(false);
+          return;
+        }
+
+        if (result.code === "early_confirmation_required") {
+          setBusy(false);
+          setEarlyPrompt(true);
+          return;
+        }
+
+        if (result.code === "already_confirmed") {
+          const when = formatConfirmTime(result.confirmedAt, timezone);
+          const who = result.confirmedByDisplayName ?? "Outro adulto";
+          setFeedback(`Já registrada por ${who}${when ? ` às ${when}` : ""}.`);
+          await onChanged();
+          setBusy(false);
+          return;
+        }
+
         setBusy(false);
-        return;
-      }
-      if (result.code === "already_completed") {
-        const when = formatConfirmTime(result.confirmedAt ?? "", timezone);
-        const who = result.confirmedByDisplayName ?? "Outro adulto";
-        setFeedback(`Já concluído por ${who}${when ? ` às ${when}` : ""}.`);
-        await onChanged();
-      } else {
-        setFeedback("Não foi possível concluir o compromisso.");
-      }
-      setBusy(false);
-      return;
-    }
-
-    if (occurrence.source !== "medication" || !occurrence.slot) {
-      setBusy(false);
-      return;
-    }
-
-    const result = await confirmDose(client, {
-      medicationId: occurrence.source_id,
-      localDate: occurrence.local_date,
-      slot: occurrence.slot,
-      acknowledgeEarly,
+        setFeedback("Não foi possível confirmar a dose.");
+      },
     });
-
-    if (result.ok) {
-      await onChanged();
-      setBusy(false);
-      return;
-    }
-
-    if (result.code === "early_confirmation_required") {
-      setBusy(false);
-      setEarlyPrompt(true);
-      return;
-    }
-
-    if (result.code === "already_confirmed") {
-      const when = formatConfirmTime(result.confirmedAt, timezone);
-      const who = result.confirmedByDisplayName ?? "Outro adulto";
-      setFeedback(`Já registrada por ${who}${when ? ` às ${when}` : ""}.`);
-      await onChanged();
-      setBusy(false);
-      return;
-    }
-
-    setBusy(false);
-    setFeedback("Não foi possível confirmar a dose.");
   }
 
   async function handleConfirmClick() {
@@ -336,19 +352,16 @@ export function OccurrenceRow({
       aria-busy={busy ? "true" : undefined}
       className={alert.show ? "occurrence occurrence--owner-alert" : "occurrence"}
     >
-      {occurrence.source === "event" || occurrence.source === "routine" ? (
-        <button
-          type="button"
-          className="occurrence__main occurrence__details"
-          data-occurrence-details
-          aria-expanded={detailsOpen}
-          onClick={() => setDetailsOpen((open) => !open)}
-        >
-          {mainContent}
-        </button>
-      ) : (
-        <div className="occurrence__main">{mainContent}</div>
-      )}
+      <button
+        type="button"
+        className="occurrence__main occurrence__details"
+        data-occurrence-details
+        aria-expanded={detailsOpen}
+        aria-label={`Detalhes: ${occurrence.title}`}
+        onClick={() => setDetailsOpen((open) => !open)}
+      >
+        {mainContent}
+      </button>
 
       {alert.show ? (
         <p className="occurrence__alert" role="status">
@@ -416,8 +429,16 @@ export function OccurrenceRow({
         </div>
       ) : null}
 
+      {detailsOpen && occurrence.source === "medication" ? (
+        <div className="occurrence__details-panel" data-medication-details>
+          <p className="occurrence__title occurrence__title--full">{occurrence.title}</p>
+          {occurrence.instruction ? <p>{occurrence.instruction}</p> : null}
+        </div>
+      ) : null}
+
       {occurrence.source === "event" && detailsOpen ? (
         <div className="occurrence__details-panel" data-event-details>
+          <p className="occurrence__title occurrence__title--full">{occurrence.title}</p>
           <p>
             {occurrence.owner_display_name
               ? `Responsável planejado: ${occurrence.owner_display_name}.`
@@ -449,86 +470,95 @@ export function OccurrenceRow({
         </div>
       ) : null}
 
-      {occurrence.source === "routine" && detailsOpen && routineCanChange ? (
+      {occurrence.source === "routine" && detailsOpen ? (
         <div className="occurrence__details-panel" data-routine-details>
-          <p>
-            {routineHasActiveException
-              ? "Esta ocorrência tem uma exceção para esta data."
-              : "Esta ocorrência segue a rotina padrão."}
-          </p>
-          {routineAction === null ? (
-            <div className="occurrence__actions">
-              {occurrence.status !== "cancelled" ? (
-                <>
-                  <button type="button" onClick={() => setRoutineAction("cancel")}>
-                    Cancelar ocorrência
-                  </button>
-                  <button type="button" onClick={() => setRoutineAction("reschedule")}>
-                    Remarcar horário
-                  </button>
-                  {occurrence.requires_confirmation ? (
-                    <button type="button" onClick={() => setRoutineAction("owner")}>
-                      Trocar responsável
+          <p className="occurrence__title occurrence__title--full">{occurrence.title}</p>
+          {routineCanChange ? (
+            <>
+              <p>
+                {routineHasActiveException
+                  ? "Esta ocorrência tem uma exceção para esta data."
+                  : "Esta ocorrência segue a rotina padrão."}
+              </p>
+              {routineAction === null ? (
+                <div className="occurrence__actions">
+                  {occurrence.status !== "cancelled" ? (
+                    <>
+                      <button type="button" onClick={() => setRoutineAction("cancel")}>
+                        Cancelar ocorrência
+                      </button>
+                      <button type="button" onClick={() => setRoutineAction("reschedule")}>
+                        Remarcar horário
+                      </button>
+                      {occurrence.requires_confirmation ? (
+                        <button type="button" onClick={() => setRoutineAction("owner")}>
+                          Trocar responsável
+                        </button>
+                      ) : null}
+                      <button type="button" onClick={() => setRoutineAction("details")}>
+                        Editar detalhes
+                      </button>
+                    </>
+                  ) : null}
+                  {routineHasActiveException ? (
+                    <button type="button" onClick={() => void handleRoutineRestore()}>
+                      Restaurar rotina
                     </button>
                   ) : null}
-                  <button type="button" onClick={() => setRoutineAction("details")}>
-                    Editar detalhes
-                  </button>
-                </>
-              ) : null}
-              {routineHasActiveException ? (
-                <button type="button" onClick={() => void handleRoutineRestore()}>
-                  Restaurar rotina
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <div data-routine-exception-form>
-              {routineAction === "details" ? (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={routineCancel}
-                    onChange={(event) => setRoutineCancel(event.target.checked)}
-                  />
-                  Cancelar ocorrência
-                </label>
-              ) : null}
-              {routineAction === "reschedule" || routineAction === "details" ? (
-                <label>
-                  Novo horário (opcional)
-                  <input
-                    type="time"
-                    value={routineTime}
-                    onChange={(event) => setRoutineTime(event.target.value)}
-                  />
-                </label>
-              ) : null}
-              {routineAction === "owner" || (routineAction === "details" && occurrence.requires_confirmation) ? (
-                <label>
-                  Responsável nesta ocorrência
-                  <select value={routineOwner} onChange={(event) => setRoutineOwner(event.target.value)}>
-                    <option value="">Sem responsável</option>
-                    {routineMembers
-                      .filter((member) => member.archived_at == null)
-                      .map((member) => (
-                        <option key={member.user_id} value={member.user_id}>
-                          {member.display_name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              ) : null}
-              <div className="occurrence__actions">
-                <button type="button" disabled={busy} onClick={() => void handleRoutineSave()}>
-                  Confirmar alteração
-                </button>
-                <button type="button" disabled={busy} onClick={() => setRoutineAction(null)}>
-                  Voltar
-                </button>
-              </div>
-            </div>
-          )}
+                </div>
+              ) : (
+                <div data-routine-exception-form>
+                  {routineAction === "details" ? (
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={routineCancel}
+                        onChange={(event) => setRoutineCancel(event.target.checked)}
+                      />
+                      Cancelar ocorrência
+                    </label>
+                  ) : null}
+                  {routineAction === "reschedule" || routineAction === "details" ? (
+                    <label>
+                      Novo horário (opcional)
+                      <input
+                        type="time"
+                        value={routineTime}
+                        onChange={(event) => setRoutineTime(event.target.value)}
+                      />
+                    </label>
+                  ) : null}
+                  {routineAction === "owner" ||
+                  (routineAction === "details" && occurrence.requires_confirmation) ? (
+                    <label>
+                      Responsável nesta ocorrência
+                      <select
+                        value={routineOwner}
+                        onChange={(event) => setRoutineOwner(event.target.value)}
+                      >
+                        <option value="">Sem responsável</option>
+                        {routineMembers
+                          .filter((member) => member.archived_at == null)
+                          .map((member) => (
+                            <option key={member.user_id} value={member.user_id}>
+                              {member.display_name}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <div className="occurrence__actions">
+                    <button type="button" disabled={busy} onClick={() => void handleRoutineSave()}>
+                      Confirmar alteração
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setRoutineAction(null)}>
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
         </div>
       ) : null}
 
