@@ -76,7 +76,7 @@ const STATUS_COPY: Record<PushUiStatus, { title: string; body: string }> = {
   },
   "config-missing": {
     title: "Notificações não configuradas",
-    body: "A chave pública VAPID não está disponível neste ambiente.",
+    body: "As notificações push não estão disponíveis neste ambiente.",
   },
 };
 

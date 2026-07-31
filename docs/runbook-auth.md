@@ -28,6 +28,17 @@ Quando o envio de OTP falhar (App Password expirada, Gmail fora do ar):
    Gmail for restabelecido.
 4. Não deixar senha permanente ativa: trate-a como acesso de emergência.
 
+### Reconfigurar Gmail SMTP / App Password
+
+1. Na conta Gmail dedicada (2FA ligado), revogue a App Password antiga se
+   comprometida e gere outra.
+2. Em Authentication → SMTP Settings do projeto, atualize usuário/senha com a
+   nova App Password (segredo só no painel — nunca no git).
+3. Dispare um OTP de teste no PWA. A UI do Adulto **não** deve mencionar Gmail
+   ou SMTP em caso de falha (mensagens fixas por código Auth).
+4. Se o SMTP continuar indisponível, mantenha o fluxo de senha temporária
+   acima. Ver também [runbook-ops.md](./runbook-ops.md).
+
 ## Troca de adulto
 
 1. Revogar a membership antiga no household.

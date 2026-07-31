@@ -99,7 +99,13 @@ DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres \
 ## Exclusão total e rotação
 
 Pedido administrativo de exclusão remove household, dados, sessões e
-subscriptions; backups restantes apenas expiram. Ao rotacionar a chave `age`,
-gere novo par, atualize `BACKUP_AGE_PUBLIC_KEY`, e mantenha as duas cópias
-offline da nova privada (e retire as antigas após a retenção dos artefatos
-antigos).
+subscriptions; backups restantes apenas expiram. Procedimento canônico:
+
+```sql
+select public.delete_household_total('DELETE_CASA');
+```
+
+Detalhes e tabletop: [runbook-ops.md](./runbook-ops.md). Ao rotacionar a chave
+`age`, gere novo par, atualize `BACKUP_AGE_PUBLIC_KEY`, e mantenha as duas
+cópias offline da nova privada (e retire as antigas após a retenção dos
+artefatos antigos).

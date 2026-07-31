@@ -17,12 +17,12 @@ export function setupHomeCopy(): string {
 
 /** Shown when the Adult is authenticated but not linked to the singleton Casa. */
 export function membershipMissingCopy(): string {
-  return "Esta conta ainda não faz parte da Casa. Peça o bootstrap no Supabase (SQL Editor → bootstrap_household) com o UUID deste Adulto — ver docs/runbook-household.md.";
+  return "Esta conta ainda não faz parte da Casa. Peça o bootstrap à operação administrativa (bootstrap_household) com o identificador deste Adulto — ver o runbook da Casa.";
 }
 
-/** Shown when household RPCs/tables are not deployed to the linked Supabase project. */
+/** Shown when household RPCs/tables are not deployed to the linked project. */
 export function schemaMissingCopy(): string {
-  return "O servidor da Casa ainda não tem as migrations aplicadas. Aplique supabase/migrations no projeto Supabase e rode o bootstrap.";
+  return "O servidor da Casa ainda não tem as migrations aplicadas. Peça à operação administrativa que aplique as migrations e rode o bootstrap.";
 }
 
 /** Pulls app exception tokens like `child_not_in_household` out of PostgREST wrappers. */
@@ -74,7 +74,7 @@ export function isSchemaMissingError(code?: string, message?: string): boolean {
 }
 
 export function medicationSchemaMissingCopy(): string {
-  return "Falta aplicar a migration de medicamentos no Supabase (arquivo 20260730200000_medications.sql no SQL Editor). Depois: NOTIFY pgrst, 'reload schema';";
+  return "Falta aplicar a migration de medicamentos no servidor da Casa. Peça à operação administrativa que aplique o schema de medicamentos e recarregue o schema da API.";
 }
 
 export function householdWriteErrorCopy(message?: string, code?: string): string {

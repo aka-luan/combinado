@@ -191,6 +191,14 @@ async function handleSend(
   });
 
   const admin = createClient(env.supabaseUrl, env.serviceKey);
+
+  // Best-effort cron heartbeat for administrative monitoring (issue #14).
+  try {
+    await admin.rpc("record_cron_heartbeat", { p_job: "push_worker" });
+  } catch {
+    // Monitoring must not block delivery.
+  }
+
   const { data: rows, error } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth");

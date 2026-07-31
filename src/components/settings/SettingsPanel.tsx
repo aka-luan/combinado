@@ -10,6 +10,7 @@ import { RoutinesSettings } from "@/components/household/RoutinesSettings";
 import { AdultsSettings } from "@/components/household/AdultsSettings";
 import { HouseholdInformation } from "@/components/household/HouseholdInformation";
 import { PushSettings } from "@/components/push/PushSettings";
+import { OpsStatusSettings } from "@/components/settings/OpsStatusSettings";
 import { clearUserAgendaCache, getDefaultAgendaCacheStore } from "@/lib/sync/agenda-cache";
 import { useWritesAllowed } from "@/lib/sync/use-writes-allowed";
 import { setSyncPhase } from "@/lib/sync/writes-gate";
@@ -43,6 +44,7 @@ export function SettingsPanel() {
               Ações desabilitadas até reconectar e sincronizar.
             </p>
           ) : null}
+          <OpsStatusSettings client={client} />
           <fieldset disabled={!writesAllowed} data-settings-writes={writesAllowed ? "on" : "off"}>
             {client && <AdultsSettings client={client} />}
             {client && <ChildrenSettings client={client} />}

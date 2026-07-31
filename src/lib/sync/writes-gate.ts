@@ -4,6 +4,8 @@ type Listener = () => void;
 
 /** Starts permissive so Casa setup works before the first agenda refetch. */
 let phase: SyncPhaseName = "online_ready";
+/** ISO timestamp of the last successful agenda sync on this device, if any. */
+let lastSyncedAt: string | null = null;
 const listeners = new Set<Listener>();
 
 function emit() {
@@ -19,6 +21,17 @@ export function setSyncPhase(next: SyncPhaseName): void {
 
 export function getSyncPhase(): SyncPhaseName {
   return phase;
+}
+
+/** Record last successful sync for Configurações (PRD §§12.3, 21). */
+export function setLastSyncedAt(iso: string | null): void {
+  if (lastSyncedAt === iso) return;
+  lastSyncedAt = iso;
+  emit();
+}
+
+export function getLastSyncedAt(): string | null {
+  return lastSyncedAt;
 }
 
 export function subscribeSyncPhase(listener: Listener): () => void {

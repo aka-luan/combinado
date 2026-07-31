@@ -38,9 +38,13 @@ export function HouseholdInformation() {
       <p data-backup-status>{message}</p>
       <h3>Aviso de privacidade</h3>
       <p data-privacy-notice>
-        O Registro é compartilhado pelos dois Adultos desta Casa. O app não oferece
-        orientação médica. Proteja o aparelho com código ou biometria e não inclua dados
-        desnecessários em instruções.
+        O Registro é compartilhado pelos dois Adultos desta Casa. Dados da família
+        ficam no cache offline deste aparelho; o app shell público pode permanecer
+        após sair. Notificações push podem mostrar conteúdo de dose na tela de
+        bloqueio. Exclusão total da Casa é administrativa e invalida sessões e
+        inscrições; backups cifrados expiram pela política de retenção. O app não
+        oferece orientação médica. Proteja o aparelho com código ou biometria e não
+        inclua dados desnecessários em instruções.
       </p>
     </section>
   );
