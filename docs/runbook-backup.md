@@ -10,21 +10,24 @@ fica visível (e “desatualizado” após 26 h sem sucesso).
 
 Workflow [`.github/workflows/backup.yml`](../.github/workflows/backup.yml):
 
-1. `pg_dumpall` (roles, best effort) + `pg_dump` (schema e dados de `public`) +
-   export mínimo de `auth.users` (ids para FKs);
+1. `pg_dumpall` (roles, best effort on Supabase Free — may write a stub when
+   globals are denied) + `pg_dump` (schema e dados de `public`) + export
+   mínimo de `auth.users` (**somente ids**, sem email) para FKs;
 2. `tar` + `gzip`;
 3. criptografia com `age` usando **somente a chave pública**;
 4. upload do artefato **`.tar.gz.age`** (retenção 7 dias);
 5. grava `backup_status` (sucesso/falha + código operacional curto).
 
 Nenhum dump em claro é enviado como artefato. Logs passam por
-`scripts/backup/with-redacted-logs.sh` (mascara `DATABASE_URL`, senhas e
-`AGE-SECRET-KEY-…`).
+`scripts/backup/with-redacted-logs.sh` (mascara `DATABASE_URL`, senhas,
+`AGE-SECRET-KEY-…` e e-mails).
 
 Rehearsal semanal:
 [`.github/workflows/backup-restore-rehearsal.yml`](../.github/workflows/backup-restore-rehearsal.yml)
 prova dump → cifrar → decifrar → restaurar → verificar numa Postgres descartável
-com **keypair efêmero**. A chave privada de produção **não** entra no CI.
+com **keypair efêmero** e dados sintéticos representativos. Isso valida o
+caminho de scripts **sem** carregar a chave privada de produção. A restauração
+real de um artefato de produção é o procedimento offline abaixo.
 
 ## Segredos e chaves
 

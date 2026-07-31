@@ -92,13 +92,20 @@ export function formatBackupStatusMessage(
   now: Date = new Date(),
 ): string {
   if (!status || status.lastStatus == null) {
-    return "Backup automático: ainda não há registro de execução. A rotina é best effort e usa artefato cifrado.";
+    const rehearsal =
+      status?.lastRestoreRehearsalAt != null
+        ? ` Último teste de restauração: ${formatPtBrInstant(status.lastRestoreRehearsalAt)}.`
+        : "";
+    return `Backup automático: ainda não há registro de execução.${rehearsal} A rotina é best effort e usa artefato cifrado.`;
   }
 
   const freshness = evaluateBackupFreshness(status.lastSuccessAt, now);
   const successLabel = status.lastSuccessAt
     ? formatPtBrInstant(status.lastSuccessAt)
     : null;
+  const rehearsalNote = status.lastRestoreRehearsalAt
+    ? ` Último teste de restauração: ${formatPtBrInstant(status.lastRestoreRehearsalAt)}.`
+    : "";
 
   if (status.lastStatus === "failure") {
     const code = status.lastErrorCode ? ` (${status.lastErrorCode})` : "";
@@ -108,16 +115,16 @@ export function formatBackupStatusMessage(
     const staleNote = freshness.stale
       ? " Alerta: último backup bem-sucedido ultrapassou 26 h."
       : "";
-    return `Backup automático: a última tentativa falhou${code}.${lastOk}${staleNote} Operação best effort.`;
+    return `Backup automático: a última tentativa falhou${code}.${lastOk}${staleNote}${rehearsalNote} Operação best effort.`;
   }
 
   if (freshness.kind === "unknown" || !successLabel) {
-    return "Backup automático: estado indisponível. Operação best effort.";
+    return `Backup automático: estado indisponível.${rehearsalNote} Operação best effort.`;
   }
 
   if (freshness.stale) {
-    return `Backup automático: último sucesso em ${successLabel} — desatualizado (mais de 26 h). Operação best effort.`;
+    return `Backup automático: último sucesso em ${successLabel} — desatualizado (mais de 26 h).${rehearsalNote} Operação best effort.`;
   }
 
-  return `Backup automático: último sucesso em ${successLabel}. Operação best effort; artefato cifrado.`;
+  return `Backup automático: último sucesso em ${successLabel}.${rehearsalNote} Operação best effort; artefato cifrado.`;
 }

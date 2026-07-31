@@ -10,12 +10,16 @@ const AGE_SECRET_RE = /\bAGE-SECRET-KEY-[A-Z0-9]+/gi;
 const GENERIC_PASSWORD_RE =
   /\b((?:password|passwd|db_password|supabase_db_password)\s*[=:]\s*)([^\s"']+)/gi;
 
+// Avoid leaking Adulto/child emails or free-text names if a tool echoes them.
+const EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+
 export function redactBackupLogLine(line: string): string {
   return line
     .replace(DATABASE_URL_RE, "[REDACTED_DATABASE_URL]")
     .replace(PGPASSWORD_RE, "PGPASSWORD=[REDACTED]")
     .replace(AGE_SECRET_RE, "[REDACTED_AGE_SECRET]")
-    .replace(GENERIC_PASSWORD_RE, "$1[REDACTED]");
+    .replace(GENERIC_PASSWORD_RE, "$1[REDACTED]")
+    .replace(EMAIL_RE, "[REDACTED_EMAIL]");
 }
 
 export function redactBackupLog(text: string): string {

@@ -22,6 +22,8 @@ require_cmd psql
 require_database_url
 
 log "dumping roles"
+# Supabase Free often denies full pg_dumpall; household schema+data still ship.
+# A roles stub is recorded so restore remains best effort without failing the job.
 set +e
 pg_dumpall --roles-only --no-role-passwords -d "$DATABASE_URL" >"$OUT_DIR/roles.sql" 2>"$OUT_DIR/roles.err"
 roles_rc=$?
@@ -39,7 +41,7 @@ pg_dump --schema-only --no-owner --no-acl -n public -d "$DATABASE_URL" -f "$OUT_
 
 log "dumping auth.users (ids only; needed for membership FKs)"
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -c \
-  "select 'insert into auth.users (id, email) values (' || quote_literal(id::text) || '::uuid,' || coalesce(quote_literal(email), 'null') || ') on conflict (id) do nothing;' from auth.users;" \
+  "select 'insert into auth.users (id, email) values (' || quote_literal(id::text) || '::uuid, null) on conflict (id) do nothing;' from auth.users;" \
   >"$OUT_DIR/auth_users.sql"
 
 log "dumping public data"

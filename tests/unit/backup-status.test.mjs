@@ -134,3 +134,19 @@ test("formatBackupStatusMessage handles never-run state", () => {
   const msg = formatBackupStatusMessage(null, new Date("2026-07-31T12:00:00.000Z"));
   assert.match(msg, /ainda não|indisponível|nunca/i);
 });
+
+test("formatBackupStatusMessage includes last restore rehearsal", () => {
+  const now = new Date("2026-07-31T12:00:00.000Z");
+  const msg = formatBackupStatusMessage(
+    {
+      lastStatus: "success",
+      lastAttemptAt: "2026-07-31T10:00:00.000Z",
+      lastSuccessAt: "2026-07-31T10:00:00.000Z",
+      lastErrorCode: null,
+      lastRestoreRehearsalAt: "2026-07-30T09:00:00.000Z",
+    },
+    now,
+  );
+  assert.match(msg, /restauração/i);
+  assert.match(msg, /30\/07\/2026/);
+});

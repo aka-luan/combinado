@@ -30,3 +30,10 @@ test("redactBackupLogLine leaves operational codes intact", () => {
   const line = "backup status=failure error_code=dump_failed";
   assert.equal(redactBackupLogLine(line), line);
 });
+
+test("redactBackupLogLine masks email addresses", () => {
+  const line = "member a1@example.com joined Casa";
+  const out = redactBackupLogLine(line);
+  assert.match(out, /\[REDACTED_EMAIL\]/);
+  assert.doesNotMatch(out, /a1@example\.com/);
+});

@@ -46,10 +46,4 @@ AGE_IDENTITY_FILE="$work/rehearsal.key" DATABASE_URL="$TARGET_URL" \
 log "verifying representative records"
 DATABASE_URL="$TARGET_URL" "$ROOT/scripts/backup/verify-restore.sh"
 
-# Optionally stamp production status when RECORD_STATUS_DATABASE_URL is set.
-if [[ -n "${RECORD_STATUS_DATABASE_URL:-}" ]]; then
-  DATABASE_URL="$RECORD_STATUS_DATABASE_URL" \
-    node "$ROOT/scripts/backup/record-status.mjs" restore_rehearsal
-fi
-
 log "restoration rehearsal OK"

@@ -3,21 +3,28 @@
 import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
-import { loadBackupStatusMessage } from "@/lib/backup/fetch";
+import { fetchBackupStatus } from "@/lib/backup/fetch";
+import { formatBackupStatusMessage } from "@/lib/backup/status";
 
-const FALLBACK =
-  "Backup automático: administrado fora do PWA. O último horário não está disponível neste ambiente; a rotina é best effort e usa artefato cifrado.";
+const LOADING = "Backup automático: carregando estado… Operação best effort.";
 
 export function HouseholdInformation() {
-  const [message, setMessage] = useState(FALLBACK);
+  const [message, setMessage] = useState(LOADING);
   const client = getSupabaseBrowserClient();
 
   useEffect(() => {
-    if (!client) return;
+    if (!client) {
+      setMessage(
+        "Backup automático: ainda não há registro de execução. A rotina é best effort e usa artefato cifrado.",
+      );
+      return;
+    }
     let cancelled = false;
     void (async () => {
-      const next = await loadBackupStatusMessage(client as SupabaseClient);
-      if (!cancelled) setMessage(next);
+      const status = await fetchBackupStatus(client as SupabaseClient);
+      if (cancelled) return;
+      // null = never run or unreadable; formatter still covers freshness/unknown copy.
+      setMessage(formatBackupStatusMessage(status));
     })();
     return () => {
       cancelled = true;
