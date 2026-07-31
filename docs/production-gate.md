@@ -53,25 +53,26 @@ bloqueia (ver §5 e [push-spike-result.md](./push-spike-result.md)).
 
 | Requisito (PRD §21) | Evidência | Resultado |
 | --- | --- | --- |
-| Regras de ocorrência | `tests/sql/agenda_snapshot.sql`, `tests/unit/agenda.test.mjs` | ☐ |
-| Vigência / versionamento | `tests/sql/weekly_routine_*.sql` | ☐ |
-| Constraints | `rls_household`, `household_maintenance`, `a11y-perf` | ☐ |
-| RLS | `tests/sql/rls_household.sql` | ☐ |
-| Dose concorrente | `tests/sql/medication_doses.sql` | ☐ |
-| Compromisso concorrente | `tests/sql/events.sql` | ☐ |
-| Relógio 19h | `agenda_snapshot.sql`, `sync-offline.test.mjs` | ☐ |
-| Relógio 22h | `agenda_snapshot.sql` (Hoje estável; Amanhã revelado) | ☐ |
-| Relógio meia-noite | agenda + doses + events + sync-offline | ☐ |
-| Início/fim de tratamento | `medication_doses.sql` (interrupt) | ☐ |
-| Datas efetivas | `weekly_routine_planning`, `household_maintenance` | ☐ |
-| Offline / reconexão | `sync-offline.test.mjs`, `service-worker.test.mjs` | ☐ |
-| Backup / restore path | `backup_status` + [runbook-backup.md](./runbook-backup.md) | ☐ |
+| Regras de ocorrência | `tests/sql/agenda_snapshot.sql`, `tests/unit/agenda.test.mjs` | ☑ |
+| Vigência / versionamento | `tests/sql/weekly_routine_*.sql` | ☑ |
+| Constraints | `rls_household`, `household_maintenance`, `a11y-perf` | ☑ |
+| RLS | `tests/sql/rls_household.sql` | ☑ |
+| Dose concorrente | `tests/sql/medication_doses.sql` | ☑ |
+| Compromisso concorrente | `tests/sql/events.sql` | ☑ |
+| Relógio 19h | `agenda_snapshot.sql`, `sync-offline.test.mjs` | ☑ |
+| Relógio 22h | `agenda_snapshot.sql` (Hoje estável; Amanhã revelado) | ☑ |
+| Relógio meia-noite | agenda + doses + events + sync-offline | ☑ |
+| Início/fim de tratamento | `medication_doses.sql` (interrupt) | ☑ |
+| Datas efetivas | `weekly_routine_planning`, `household_maintenance` | ☑ |
+| Offline / reconexão | `sync-offline.test.mjs`, `service-worker.test.mjs` | ☑ |
+| Backup / restore path | `backup_status` + [runbook-backup.md](./runbook-backup.md) | ☑ |
 
 Registro da corrida:
 
-- Comando: `pnpm run test:production-gate` (± `COMBINADO_GATE_FULL=1`)
-- Data/hora: ____
-- Exit code: ____
+- Comando: `COMBINADO_REQUIRE_RLS=1 DATABASE_URL=postgres://… pnpm run test:production-gate`
+- Data/hora: 2026-07-31 (cloud agent) — typecheck + unit (128) + RLS/SQL suites **PASSED**; decisão `hold` enquanto linhas manuais abertas
+- `COMBINADO_GATE_FULL=1`: build OK; e2e autoritativo no CI (`config-missing` pula quando `CI` + secrets; login autenticado precisa Casa bootstrap + `TEST_LOGIN_*`)
+- Exit code (gate padrão): 0
 
 ---
 
