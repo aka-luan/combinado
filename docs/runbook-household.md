@@ -59,7 +59,7 @@ Com o household bootstrapado, o primeiro adulto configura a casa **no app**:
 
 1. Sem criança ativa, Hoje mostra `Configurar casa` e aponta para Configurações.
 2. Em Configurações → crianças, cadastrar ao menos uma criança (CRUD existente).
-3. Em Configurações → rotinas semanais, criar uma rotina (create-only, campos §8.5).
+3. Em Configurações → rotinas semanais, criar uma rotina (campos §8.5).
 4. Voltar a Hoje: `household_agenda_snapshot` deriva a ocorrência do dia quando a
    rotina começa hoje e o weekday bate — sem semear SQL no dia a dia.
 
@@ -147,3 +147,15 @@ select public.household_agenda_snapshot(
 Ocorrências **não** são tabela: a RPC deriva Hoje/Amanhã, `server_time`, e
 `version` (hash). Antes das 19h (fuso da casa) Amanhã só entra como `count`;
 a partir das 19h, `reveal` fica true e a seção inline aparece no app.
+
+### Planejamento de rotinas (M6 / issue #9)
+
+Aplicar também `supabase/migrations/20260731100000_weekly_routine_planning.sql`.
+Edições e arquivamento criam uma versão efetiva amanhã; não alteram versões
+históricas. O app separa rotinas ativas e arquivadas.
+
+Em Hoje ou Amanhã, tocar uma ocorrência de rotina permite cancelar, remarcar o
+horário, trocar/remover o Responsável ou editar esses campos juntos. Cada ação
+grava uma exceção imutável para `rotina + data local`; `Restaurar rotina` grava
+outra exceção auditada e volta ao padrão. A RPC aceita somente Hoje/Amanhã e
+detecta conflitos com a versão/exceção que o Adulto leu.

@@ -92,6 +92,24 @@ function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
       o.confirmed_by_display_name === undefined
         ? undefined
         : asString(o.confirmed_by_display_name),
+    routine_version_id:
+      o.routine_version_id === undefined ? undefined : asString(o.routine_version_id),
+    routine_exception_version_id:
+      o.routine_exception_version_id === undefined
+        ? undefined
+        : asString(o.routine_exception_version_id),
+    routine_exception_active:
+      o.routine_exception_active === undefined
+        ? undefined
+        : asBoolean(o.routine_exception_active) ?? undefined,
+    routine_exception_time_overridden:
+      o.routine_exception_time_overridden === undefined
+        ? undefined
+        : asBoolean(o.routine_exception_time_overridden) ?? undefined,
+    routine_exception_owner_overridden:
+      o.routine_exception_owner_overridden === undefined
+        ? undefined
+        : asBoolean(o.routine_exception_owner_overridden) ?? undefined,
   };
 }
 

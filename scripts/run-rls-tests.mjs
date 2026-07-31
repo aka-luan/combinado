@@ -110,6 +110,7 @@ psqlGrant();
 psql(join(root, "tests/sql/rls_household.sql"));
 psql(join(root, "tests/sql/agenda_snapshot.sql"));
 psql(join(root, "tests/sql/weekly_routine_create.sql"));
+psql(join(root, "tests/sql/weekly_routine_planning.sql"));
 psql(join(root, "tests/sql/medication_doses.sql"));
 psql(join(root, "tests/sql/events.sql"));
-console.log("RLS + agenda snapshot + weekly routine create + medication dose + event tests OK");
+console.log("RLS + agenda snapshot + weekly routine create + weekly routine planning + medication dose + event tests OK");

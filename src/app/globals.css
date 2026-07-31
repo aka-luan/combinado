@@ -115,6 +115,13 @@ main {
   margin: 0.5rem 0 1rem;
 }
 
+[data-routine-edit] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0.5rem 0 1rem;
+}
+
 [data-routine-create] label {
   display: flex;
   flex-direction: column;
@@ -146,6 +153,17 @@ main {
 
 [data-routines-error] {
   color: light-dark(#b91c1c, #fca5a5);
+}
+
+.routine-form-actions,
+.routine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+[data-routines-archived] {
+  opacity: 0.75;
 }
 
 

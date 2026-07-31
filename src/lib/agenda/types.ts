@@ -30,6 +30,11 @@ export type SnapshotOccurrence = {
   confirmed_at?: string | null;
   confirmed_by_user_id?: string | null;
   confirmed_by_display_name?: string | null;
+  routine_version_id?: string | null;
+  routine_exception_version_id?: string | null;
+  routine_exception_active?: boolean;
+  routine_exception_time_overridden?: boolean;
+  routine_exception_owner_overridden?: boolean;
 };
 
 export type DaySnapshot = {

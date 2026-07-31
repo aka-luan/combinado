@@ -180,6 +180,20 @@ export function AgendaHome() {
           void refresh();
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "weekly_routine_versions" },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "weekly_routine_exceptions" },
+        () => {
+          void refresh();
+        },
+      )
       .subscribe();
     return () => {
       void client.removeChannel(channel);
