@@ -55,7 +55,7 @@ bloqueia (ver §5 e [push-spike-result.md](./push-spike-result.md)).
 | --- | --- | --- |
 | Regras de ocorrência | `tests/sql/agenda_snapshot.sql`, `tests/unit/agenda.test.mjs` | ☑ |
 | Vigência / versionamento | `tests/sql/weekly_routine_*.sql` | ☑ |
-| Constraints | `rls_household`, `household_maintenance`, `a11y-perf` | ☑ |
+| Constraints | `rls_household`, `household_maintenance`, `weekly_routine_create`, `routines.test.mjs` | ☑ |
 | RLS | `tests/sql/rls_household.sql` | ☑ |
 | Dose concorrente | `tests/sql/medication_doses.sql` | ☑ |
 | Compromisso concorrente | `tests/sql/events.sql` | ☑ |
@@ -142,8 +142,8 @@ Ver também [checklist-a11y-perf.md](./checklist-a11y-perf.md).
 | Frescor de backup | Configurações + `get_backup_status` / monitor | ☐ saudável (&lt; 26 h) |
 | Rehearsal semanal Actions | workflow `backup-restore-rehearsal` | ☐ |
 | Restore controlado (se feito) | [runbook-backup.md](./runbook-backup.md) | ☐ / N/A |
-| Monitor admin | `get_ops_monitor_snapshot` / `print-monitor.mjs` | ☐ |
-| Runbook owner | [runbook-ops.md](./runbook-ops.md) + pointers auth/household/push/backup | ☐ |
+| Monitoramento administrativo | `get_ops_monitor_snapshot` / `print-monitor.mjs` | ☐ |
+| Runbook administrativo | [runbook-ops.md](./runbook-ops.md) + pointers auth/household/push/backup | ☐ |
 | Tabletop T1–T5 | [tabletop-ops.md](./tabletop-ops.md) | ☐ |
 
 ---

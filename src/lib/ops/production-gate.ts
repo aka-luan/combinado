@@ -38,7 +38,8 @@ export const PRODUCTION_GATE_CHECKS: readonly ProductionGateCheck[] = [
     evidence: [
       "tests/sql/rls_household.sql",
       "tests/sql/household_maintenance.sql",
-      "tests/unit/a11y-perf.test.mjs",
+      "tests/sql/weekly_routine_create.sql",
+      "tests/unit/routines.test.mjs",
     ],
   },
   {
@@ -54,7 +55,7 @@ export const PRODUCTION_GATE_CHECKS: readonly ProductionGateCheck[] = [
     evidence: ["tests/sql/medication_doses.sql"],
   },
   {
-    id: "concurrent-commitment",
+    id: "concurrent-compromisso",
     requirement: "Conclusão de compromisso concorrente — uma ativa",
     kind: "automated",
     evidence: ["tests/sql/events.sql"],
@@ -117,7 +118,7 @@ export const PRODUCTION_GATE_CHECKS: readonly ProductionGateCheck[] = [
   },
   {
     id: "ops-monitor-runbook",
-    requirement: "Estado operacional e runbook disponíveis ao owner",
+    requirement: "Estado operacional e runbook no material administrativo",
     kind: "ops",
     evidence: [
       "docs/runbook-ops.md",
@@ -197,7 +198,7 @@ export function missingEvidencePaths(present: ReadonlySet<string>): string[] {
 }
 
 export function formatProductionGateCatalog(): string {
-  const lines = ["Production gate catalog (PRD §21 / issue #15):"];
+  const lines = ["Catálogo do gate de produção (PRD §21 / issue #15):"];
   for (const check of PRODUCTION_GATE_CHECKS) {
     lines.push(`- [${check.kind}] ${check.id}: ${check.requirement}`);
   }

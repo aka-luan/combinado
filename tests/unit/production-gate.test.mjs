@@ -26,7 +26,7 @@ test("catalog covers every PRD §21 automated requirement id", () => {
     "constraints",
     "rls",
     "concurrent-dose",
-    "concurrent-commitment",
+    "concurrent-compromisso",
     "clock-19h",
     "clock-22h",
     "clock-midnight",
@@ -63,6 +63,7 @@ test("requiredEvidencePaths is the unique union of automated and ops evidence", 
 
 test("formatProductionGateCatalog lists ids and kinds without family content", () => {
   const text = formatProductionGateCatalog();
+  assert.match(text, /Catálogo do gate de produção/);
   assert.match(text, /occurrence-rules/);
   assert.match(text, /automated|manual|ops/);
   assert.doesNotMatch(text, /Mia|Dipirona|tomar com água/i);
