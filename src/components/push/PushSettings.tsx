@@ -2,91 +2,26 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getPushConfig } from "@/lib/push/config";
 import { isInstalledPwa, readInstallProbe } from "@/lib/push/install";
-import { resolvePushStatus, type PushUiStatus } from "@/lib/push/status";
+import {
+  PUSH_STATUS_COPY,
+  readPushStatusSnapshot,
+  type PushStatusSnapshot,
+} from "@/lib/push/read-status";
+import { getPushConfig } from "@/lib/push/config";
 import {
   ensurePushSubscription,
   upsertPushSubscription,
   type ServiceWorkerRegistrationLike,
 } from "@/lib/push/subscription";
 
-type Snapshot = {
-  status: PushUiStatus;
-  permission: NotificationPermission | "unsupported";
-  hasSubscription: boolean;
-};
-
-async function readSnapshot(): Promise<Snapshot> {
-  const config = getPushConfig();
-  const pushSupported =
-    typeof window !== "undefined" &&
-    "Notification" in window &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window;
-
-  if (!config) {
-    return { status: "config-missing", permission: "unsupported", hasSubscription: false };
-  }
-  if (!pushSupported) {
-    return { status: "unsupported", permission: "unsupported", hasSubscription: false };
-  }
-
-  const installed = isInstalledPwa(readInstallProbe());
-  const permission = Notification.permission;
-  let hasSubscription = false;
-
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    const existing = await registration.pushManager.getSubscription();
-    hasSubscription = existing !== null;
-  } catch {
-    hasSubscription = false;
-  }
-
-  return {
-    status: resolvePushStatus({
-      pushSupported: true,
-      vapidConfigured: true,
-      installed,
-      permission,
-      hasSubscription,
-    }),
-    permission,
-    hasSubscription,
-  };
-}
-
-const STATUS_COPY: Record<PushUiStatus, { title: string; body: string }> = {
-  active: {
-    title: "Notificações ativas",
-    body: "Este aparelho receberá lembretes quando o Combinado enviar.",
-  },
-  "permission-required": {
-    title: "Permissão necessária",
-    body: "As notificações são opcionais. Elas ajudam a lembrar doses e o resumo de amanhã, mas o registro compartilhado continua funcionando sem elas. No iPhone, se o Modo Foco silenciar alertas, permita o Combinado no Focus relevante.",
-  },
-  "reinstall-required": {
-    title: "Reinstalação ou reparo necessário",
-    body: "Instale o Combinado na Tela de Início (Compartilhar → Adicionar à Tela de Início) e abra pelo ícone. Se já estiver instalado e a permissão estiver concedida, toque em Reparar inscrição.",
-  },
-  unsupported: {
-    title: "Notificações indisponíveis",
-    body: "Este navegador não oferece Web Push.",
-  },
-  "config-missing": {
-    title: "Notificações não configuradas",
-    body: "A chave pública VAPID não está disponível neste ambiente.",
-  },
-};
-
 export function PushSettings({ client }: { client: SupabaseClient }) {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<PushStatusSnapshot | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    setSnapshot(await readSnapshot());
+    setSnapshot(await readPushStatusSnapshot());
   }, []);
 
   useEffect(() => {
@@ -154,7 +89,7 @@ export function PushSettings({ client }: { client: SupabaseClient }) {
     return <p data-push-status="loading">Verificando notificações…</p>;
   }
 
-  const copy = STATUS_COPY[snapshot.status];
+  const copy = PUSH_STATUS_COPY[snapshot.status];
 
   return (
     <section data-push-settings data-push-status={snapshot.status}>

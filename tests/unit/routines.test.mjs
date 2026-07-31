@@ -140,12 +140,14 @@ test("isHouseholdSetupNeeded is true only with no active children", () => {
 test("membership and schema gaps are distinct from the child+routine setup cue", () => {
   assert.match(membershipMissingCopy(), /bootstrap_household/);
   assert.doesNotMatch(membershipMissingCopy(), /Configurar casa/);
+  assert.doesNotMatch(membershipMissingCopy(), /Supabase/i);
   assert.match(schemaMissingCopy(), /migrations/);
+  assert.doesNotMatch(schemaMissingCopy(), /Supabase/i);
   assert.equal(isSchemaMissingError("PGRST202"), true);
   assert.equal(isSchemaMissingError(undefined, "household_missing"), false);
   assert.match(householdWriteErrorCopy("household_missing"), /bootstrap_household/);
 });
-test("medication schema errors point at the medications migration", async () => {
+test("medication schema errors point adults at administrative migration work", async () => {
   const {
     extractAppErrorToken,
     isSchemaMissingError,
@@ -158,6 +160,7 @@ test("medication schema errors point at the medications migration", async () => 
     ),
     true,
   );
-  assert.match(medicationSchemaMissingCopy(), /20260730200000_medications/);
+  assert.match(medicationSchemaMissingCopy(), /medicamentos|migration/i);
+  assert.doesNotMatch(medicationSchemaMissingCopy(), /Supabase/i);
   assert.equal(extractAppErrorToken("P0001: child_not_in_household"), "child_not_in_household");
 });

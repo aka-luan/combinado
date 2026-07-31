@@ -61,6 +61,8 @@ Após o bootstrap, o adulto cadastra criança e rotina semanal em Configuraçõe
 (`create_weekly_routine`); `seed_weekly_routine` fica só para testes/service role
 — ver o mesmo runbook.
 Backup cifrado e restauração: [docs/runbook-backup.md](./docs/runbook-backup.md).
+Operação e diagnóstico do stack Free (monitor, exclusão total, tabletop):
+[docs/runbook-ops.md](./docs/runbook-ops.md).
 
 ## Web Push
 

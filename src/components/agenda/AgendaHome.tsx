@@ -19,7 +19,8 @@ import {
   resolveOfflineAgendaView,
   type OfflineAgendaView,
 } from "@/lib/sync/policy";
-import { getSyncPhase, setSyncPhase } from "@/lib/sync/writes-gate";
+import { recordRealtimeChannelError } from "@/lib/ops/realtime-errors";
+import { getSyncPhase, setLastSyncedAt, setSyncPhase } from "@/lib/sync/writes-gate";
 import { OccurrenceRow } from "./OccurrenceRow";
 
 type LoadState =
@@ -90,6 +91,7 @@ export function AgendaHome() {
       await putAgendaCache(getDefaultAgendaCacheStore(), uid, result.data, syncedAt);
     }
     blockWritesUntilRefetchRef.current = false;
+    setLastSyncedAt(syncedAt);
     setSyncPhase("online_ready");
     setState({ kind: "online", snapshot: result.data });
   }, [applyOffline]);
@@ -194,7 +196,11 @@ export function AgendaHome() {
           void refresh();
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          void recordRealtimeChannelError(client, status, err);
+        }
+      });
     return () => {
       void client.removeChannel(channel);
     };

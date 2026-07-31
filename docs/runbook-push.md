@@ -101,3 +101,9 @@ num comentário da issue #3:
 - **No-go para notificações no v1** — falha sistêmica de Web Push/Cron no
   Free; o produto segue sem push (PRD M0 / §21). O registro compartilhado
   permanece obrigatório.
+
+## Monitoramento operacional
+
+Último cron, outbox e falhas: [runbook-ops.md](./runbook-ops.md)
+(`get_ops_monitor_snapshot` / `scripts/ops/print-monitor.mjs`). A Function
+`send-test-push` grava `record_cron_heartbeat` em cada disparo autorizado.

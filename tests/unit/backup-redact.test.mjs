@@ -37,3 +37,12 @@ test("redactBackupLogLine masks email addresses", () => {
   assert.match(out, /\[REDACTED_EMAIL\]/);
   assert.doesNotMatch(out, /a1@example\.com/);
 });
+
+test("ops redact composed after backup redact strips family fields", async () => {
+  const { redactOperationalLogLine } = await import("../../src/lib/ops/redact.ts");
+  const line =
+    'dump ok child="Mia" medicine="Dipirona" instruction="tomar com água" DATABASE_URL=postgres://u:p@h/db';
+  const out = redactOperationalLogLine(redactBackupLogLine(line));
+  assert.doesNotMatch(out, /Mia|Dipirona|tomar com água|postgres:\/\//);
+  assert.match(out, /\[REDACTED_DATABASE_URL\]/);
+});
