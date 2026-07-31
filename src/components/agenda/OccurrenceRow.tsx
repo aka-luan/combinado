@@ -7,8 +7,16 @@ import {
   reverseDoseConfirmation,
 } from "@/lib/agenda/confirm-dose";
 import {
+  cancelOneOffEvent,
+  completeOneOffEvent,
+  reverseOneOffEventCompletion,
+} from "@/lib/household/one-off-events";
+import {
+  isCancellableEvent,
   isConfirmableDose,
+  isConfirmableEvent,
   isReversibleDose,
+  isReversibleEvent,
   needsEarlyConfirmationAck,
   statusLabel,
   ownerAlertPresentation,
@@ -42,10 +50,21 @@ export function OccurrenceRow({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [earlyPrompt, setEarlyPrompt] = useState(false);
   const [correctPrompt, setCorrectPrompt] = useState(false);
+  const [cancelPrompt, setCancelPrompt] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [, setTick] = useState(0);
 
-  const confirmable = isConfirmableDose(occurrence, day) && !busy && writesAllowed;
-  const reversible = isReversibleDose(occurrence, day) && writesAllowed;
+  const confirmable =
+    (isConfirmableDose(occurrence, day) || isConfirmableEvent(occurrence, day)) &&
+    !busy &&
+    writesAllowed;
+  const reversible =
+    (isReversibleDose(occurrence, day) || isReversibleEvent(occurrence, day)) && writesAllowed;
+  const cancellable =
+    isCancellableEvent(occurrence, day) &&
+    !busy &&
+    writesAllowed &&
+    occurrence.status !== "completed";
   const undoUntil = undoDeadlineFromServer(
     occurrence.confirmed_at ?? null,
     serverTime,
@@ -64,10 +83,34 @@ export function OccurrenceRow({
   }, [undoUntil]);
 
   async function runConfirm(acknowledgeEarly: boolean) {
-    if (!client || occurrence.source !== "medication" || !occurrence.slot) return;
+    if (!client) return;
     setBusy(true);
     setFeedback(null);
     setEarlyPrompt(false);
+
+    if (occurrence.source === "event") {
+      const result = await completeOneOffEvent(client, occurrence.source_id);
+      if (result.ok) {
+        await onChanged();
+        setBusy(false);
+        return;
+      }
+      if (result.code === "already_completed") {
+        const when = formatConfirmTime(result.confirmedAt ?? "", timezone);
+        const who = result.confirmedByDisplayName ?? "Outro adulto";
+        setFeedback(`Já concluído por ${who}${when ? ` às ${when}` : ""}.`);
+        await onChanged();
+      } else {
+        setFeedback("Não foi possível concluir o compromisso.");
+      }
+      setBusy(false);
+      return;
+    }
+
+    if (occurrence.source !== "medication" || !occurrence.slot) {
+      setBusy(false);
+      return;
+    }
 
     const result = await confirmDose(client, {
       medicationId: occurrence.source_id,
@@ -103,6 +146,10 @@ export function OccurrenceRow({
 
   async function handleConfirmClick() {
     if (!client) return;
+    if (occurrence.source === "event") {
+      await runConfirm(false);
+      return;
+    }
     // Prefer server early gate; client hint avoids an extra round-trip when obvious.
     if (needsEarlyConfirmationAck(occurrence, serverTime, timezone)) {
       setEarlyPrompt(true);
@@ -119,14 +166,17 @@ export function OccurrenceRow({
     }
     setBusy(true);
     setFeedback(null);
-    const result = await reverseDoseConfirmation(client, occurrence.confirmation_id);
+    const result =
+      occurrence.source === "event"
+        ? await reverseOneOffEventCompletion(client, occurrence.confirmation_id)
+        : await reverseDoseConfirmation(client, occurrence.confirmation_id);
     if (!result.ok) {
       setBusy(false);
       setCorrectPrompt(false);
       setFeedback(
         result.code === "correction_window_closed"
           ? "Correção disponível só até o fim do dia."
-          : "Não foi possível reverter o registro.",
+          : "Não foi possível corrigir o registro.",
       );
       return;
     }
@@ -134,6 +184,46 @@ export function OccurrenceRow({
     await onChanged();
     setBusy(false);
   }
+
+  async function handleCancelEvent() {
+    if (!client || occurrence.source !== "event") return;
+    setBusy(true);
+    setFeedback(null);
+    const result = await cancelOneOffEvent(client, occurrence.source_id);
+    setCancelPrompt(false);
+    if (!result.ok) {
+      setFeedback(
+        result.code === "already_completed"
+          ? "Este compromisso já foi concluído."
+          : "Não foi possível cancelar o compromisso.",
+      );
+      setBusy(false);
+      return;
+    }
+    await onChanged();
+    setBusy(false);
+  }
+
+  const mainContent = (
+    <>
+      <span className="occurrence__time">{time}</span>
+      <span className="occurrence__title">{occurrence.title}</span>
+      <span className="occurrence__target">{occurrence.target_label}</span>
+      <span className="occurrence__status">{statusLabel(occurrence)}</span>
+      {occurrence.owner_display_name ? (
+        <span className="occurrence__owner">Responsável: {occurrence.owner_display_name}</span>
+      ) : null}
+      {occurrence.confirmed_by_display_name ? (
+        <span className="occurrence__owner" data-confirmed-by>
+          Executado por {occurrence.confirmed_by_display_name}
+          {occurrence.confirmed_at ? ` · ${formatConfirmTime(occurrence.confirmed_at, timezone)}` : null}
+        </span>
+      ) : null}
+      {occurrence.instruction ? (
+        <span className="occurrence__instruction">{occurrence.instruction}</span>
+      ) : null}
+    </>
+  );
 
   return (
     <li
@@ -144,26 +234,19 @@ export function OccurrenceRow({
       aria-busy={busy ? "true" : undefined}
       className={alert.show ? "occurrence occurrence--owner-alert" : "occurrence"}
     >
-      <div className="occurrence__main">
-        <span className="occurrence__time">{time}</span>
-        <span className="occurrence__title">{occurrence.title}</span>
-        <span className="occurrence__target">{occurrence.target_label}</span>
-        <span className="occurrence__status">{statusLabel(occurrence)}</span>
-        {occurrence.owner_display_name ? (
-          <span className="occurrence__owner">{occurrence.owner_display_name}</span>
-        ) : null}
-        {occurrence.source === "medication" && occurrence.confirmed_by_display_name ? (
-          <span className="occurrence__owner" data-confirmed-by>
-            {occurrence.confirmed_by_display_name}
-            {occurrence.confirmed_at
-              ? ` · ${formatConfirmTime(occurrence.confirmed_at, timezone)}`
-              : null}
-          </span>
-        ) : null}
-        {occurrence.instruction ? (
-          <span className="occurrence__instruction">{occurrence.instruction}</span>
-        ) : null}
-      </div>
+      {occurrence.source === "event" ? (
+        <button
+          type="button"
+          className="occurrence__main occurrence__details"
+          data-occurrence-details
+          aria-expanded={detailsOpen}
+          onClick={() => setDetailsOpen((open) => !open)}
+        >
+          {mainContent}
+        </button>
+      ) : (
+        <div className="occurrence__main">{mainContent}</div>
+      )}
 
       {alert.show ? (
         <p className="occurrence__alert" role="status">
@@ -187,8 +270,13 @@ export function OccurrenceRow({
               </button>
             </div>
           ) : (
-            <button type="button" data-confirm-dose onClick={() => void handleConfirmClick()}>
-              Confirmar dose
+            <button
+              type="button"
+              data-confirm-dose={occurrence.source === "medication" ? "true" : undefined}
+              data-complete-event={occurrence.source === "event" ? "true" : undefined}
+              onClick={() => void handleConfirmClick()}
+            >
+              {occurrence.source === "event" ? "Concluir" : "Confirmar dose"}
             </button>
           )}
         </div>
@@ -223,6 +311,39 @@ export function OccurrenceRow({
               Corrigir registro
             </button>
           )}
+        </div>
+      ) : null}
+
+      {occurrence.source === "event" && detailsOpen ? (
+        <div className="occurrence__details-panel" data-event-details>
+          <p>
+            {occurrence.owner_display_name
+              ? `Responsável planejado: ${occurrence.owner_display_name}.`
+              : "Sem responsável planejado."}
+          </p>
+          {occurrence.confirmed_by_display_name ? (
+            <p>
+              Executado por {occurrence.confirmed_by_display_name}
+              {occurrence.confirmed_at ? ` às ${formatConfirmTime(occurrence.confirmed_at, timezone)}` : ""}.
+            </p>
+          ) : null}
+          {cancellable && client ? (
+            cancelPrompt ? (
+              <div data-event-cancel-confirm>
+                <p>Cancelar este compromisso?</p>
+                <button type="button" onClick={() => void handleCancelEvent()}>
+                  Confirmar cancelamento
+                </button>
+                <button type="button" onClick={() => setCancelPrompt(false)}>
+                  Voltar
+                </button>
+              </div>
+            ) : (
+              <button type="button" data-cancel-event onClick={() => setCancelPrompt(true)}>
+                Cancelar compromisso
+              </button>
+            )
+          ) : null}
         </div>
       ) : null}
 

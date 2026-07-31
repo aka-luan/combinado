@@ -30,7 +30,7 @@ export function statusLabel(occurrence: SnapshotOccurrence): string {
       return "Sem registro";
     default:
       if (isDose) return "Programada";
-      return occurrence.requires_confirmation ? "Programado" : "Informativo";
+      return "Programado";
   }
 }
 
@@ -118,4 +118,30 @@ export function isReversibleDose(occurrence: SnapshotOccurrence, day: "today" | 
   if (occurrence.source !== "medication") return false;
   if (day !== "today") return false;
   return occurrence.status === "completed" && Boolean(occurrence.confirmation_id);
+}
+
+export function isConfirmableEvent(
+  occurrence: SnapshotOccurrence,
+  day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "event" || day !== "today") return false;
+  return occurrence.requires_confirmation && (occurrence.status === "scheduled" || occurrence.status === "late");
+}
+
+export function isReversibleEvent(
+  occurrence: SnapshotOccurrence,
+  day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "event" || day !== "today") return false;
+  return occurrence.status === "completed" && Boolean(occurrence.confirmation_id);
+}
+
+export function isCancellableEvent(
+  occurrence: SnapshotOccurrence,
+  _day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "event") return false;
+  return occurrence.requires_confirmation
+    ? occurrence.status === "scheduled" || occurrence.status === "late"
+    : occurrence.status === "scheduled";
 }

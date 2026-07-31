@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { parseAgendaSnapshot } from "../../src/lib/agenda/parse.ts";
 import {
   OWNER_ALERT_LABEL,
+  isCancellableEvent,
+  isConfirmableEvent,
+  isReversibleEvent,
   ownerAlertPresentation,
   statusLabel,
   tomorrowView,
@@ -83,6 +86,30 @@ test("parseAgendaSnapshot accepts medication occurrences", () => {
   assert.equal(parsed.today.occurrences[0].status, "pending");
 });
 
+test("parseAgendaSnapshot accepts one-off event occurrences and event actions obey the day rules", () => {
+  const event = {
+    ...sampleOccurrence,
+    key: "event:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:2026-07-30",
+    source: "event",
+    scheduled_time: "15:00",
+    owner_user_id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    owner_display_name: "Beto",
+    status: "scheduled",
+    needs_owner_alert: false,
+  };
+  const parsed = parseAgendaSnapshot({
+    ...sampleSnapshot,
+    today: { ...sampleSnapshot.today, occurrences: [event] },
+  });
+  assert.ok(parsed);
+  const occurrence = parsed.today.occurrences[0];
+  assert.equal(occurrence.source, "event");
+  assert.equal(isConfirmableEvent(occurrence, "today"), true);
+  assert.equal(isConfirmableEvent(occurrence, "tomorrow"), false);
+  assert.equal(isCancellableEvent(occurrence, "today"), true);
+  assert.equal(isReversibleEvent({ ...occurrence, status: "completed", confirmation_id: "c" }, "today"), true);
+});
+
 test("ownerAlertPresentation exposes color+icon+text cue only when flagged", () => {
   const alert = ownerAlertPresentation(sampleOccurrence);
   assert.equal(alert.show, true);
@@ -124,7 +151,7 @@ test("statusLabel maps server statuses for the UI", () => {
   assert.equal(statusLabel(sampleOccurrence), "Atrasado");
   assert.equal(
     statusLabel({ ...sampleOccurrence, status: "scheduled", requires_confirmation: false }),
-    "Informativo",
+    "Programado",
   );
   assert.equal(
     statusLabel({

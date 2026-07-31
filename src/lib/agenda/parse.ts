@@ -34,7 +34,7 @@ const STATUSES: ReadonlySet<string> = new Set([
   "unrecorded",
 ]);
 
-const SOURCES: ReadonlySet<string> = new Set(["routine", "medication"]);
+const SOURCES: ReadonlySet<string> = new Set(["routine", "medication", "event"]);
 
 function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
   const o = asRecord(raw);

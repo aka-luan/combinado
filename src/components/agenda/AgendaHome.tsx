@@ -166,6 +166,20 @@ export function AgendaHome() {
           void refresh();
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "one_off_events" },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_completions" },
+        () => {
+          void refresh();
+        },
+      )
       .subscribe();
     return () => {
       void client.removeChannel(channel);

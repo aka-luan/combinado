@@ -5,6 +5,7 @@ import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { signOut } from "@/lib/auth/session";
 import { ChildrenSettings } from "@/components/household/ChildrenSettings";
 import { MedicationsSettings } from "@/components/household/MedicationsSettings";
+import { EventsSettings } from "@/components/household/EventsSettings";
 import { RoutinesSettings } from "@/components/household/RoutinesSettings";
 import { PushSettings } from "@/components/push/PushSettings";
 import { clearUserAgendaCache, getDefaultAgendaCacheStore } from "@/lib/sync/agenda-cache";
@@ -44,6 +45,7 @@ export function SettingsPanel() {
             {client && <ChildrenSettings client={client} />}
             {client && <RoutinesSettings client={client} />}
             {client && <MedicationsSettings client={client} />}
+            {client && <EventsSettings client={client} />}
             {client && <PushSettings client={client} />}
           </fieldset>
           {!confirming ? (

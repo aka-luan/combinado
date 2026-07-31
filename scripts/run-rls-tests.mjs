@@ -78,6 +78,11 @@ grant execute on function public.confirm_dose(uuid, date, text, boolean, timesta
 grant execute on function public.reverse_dose_confirmation(uuid, timestamptz) to authenticated;
 grant execute on function public.interrupt_medication_immediate(uuid, timestamptz) to authenticated;
 grant execute on function public.derive_medication_occurrences_for_day(uuid, date, timestamptz) to authenticated;
+grant execute on function public.create_one_off_event(text, text, uuid, date, text, boolean, uuid, timestamptz) to authenticated;
+grant execute on function public.complete_one_off_event(uuid, timestamptz) to authenticated;
+grant execute on function public.reverse_event_completion(uuid, timestamptz) to authenticated;
+grant execute on function public.cancel_one_off_event(uuid, timestamptz) to authenticated;
+grant execute on function public.derive_one_off_event_occurrences_for_day(uuid, date, timestamptz) to authenticated;
 `);
 }
 
@@ -106,4 +111,5 @@ psql(join(root, "tests/sql/rls_household.sql"));
 psql(join(root, "tests/sql/agenda_snapshot.sql"));
 psql(join(root, "tests/sql/weekly_routine_create.sql"));
 psql(join(root, "tests/sql/medication_doses.sql"));
-console.log("RLS + agenda snapshot + weekly routine create + medication dose tests OK");
+psql(join(root, "tests/sql/events.sql"));
+console.log("RLS + agenda snapshot + weekly routine create + medication dose + event tests OK");

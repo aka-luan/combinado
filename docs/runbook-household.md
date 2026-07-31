@@ -95,6 +95,22 @@ select to_regclass('public.medications') is not null as medications_table_ready;
 Sem isso, Configurações → Medicamentos mostra formulário mas falha ao salvar
 (RPC/tabela ausente). Com a migration aplicada, o Adulto cadastra doses no PWA.
 
+### Compromissos avulsos (M5 / issue #8)
+
+Aplicar também `supabase/migrations/20260731000000_one_off_events.sql` no mesmo
+projeto Supabase e recarregar o cache do PostgREST:
+
+```sql
+notify pgrst, 'reload schema';
+```
+
+Em Configurações → Compromissos avulsos, qualquer Adulto pode criar um
+compromisso de hoje ou de uma data futura para uma criança ou para a Casa. Os
+dois Adultos veem o mesmo registro; responsável planejado e executor real são
+campos distintos. O evento informativo não possui responsável nem ação de
+conclusão. Cancelamento, conclusão e correção são RPCs auditadas e não apagam
+linhas.
+
 ### Semente SQL (só testes / service role)
 
 `seed_weekly_routine` **não** é concedida a `authenticated`. Use só em testes
@@ -131,4 +147,3 @@ select public.household_agenda_snapshot(
 Ocorrências **não** são tabela: a RPC deriva Hoje/Amanhã, `server_time`, e
 `version` (hash). Antes das 19h (fuso da casa) Amanhã só entra como `count`;
 a partir das 19h, `reveal` fica true e a seção inline aparece no app.
-

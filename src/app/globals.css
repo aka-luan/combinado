@@ -209,6 +209,16 @@ main {
   background: light-dark(#f8fafc, #1e293b);
 }
 
+.occurrence[data-occurrence-status="completed"],
+.occurrence[data-occurrence-status="cancelled"] {
+  opacity: 0.68;
+}
+
+.occurrence[data-occurrence-status="completed"] .occurrence__title,
+.occurrence[data-occurrence-status="cancelled"] .occurrence__title {
+  text-decoration: line-through;
+}
+
 .occurrence--owner-alert {
   border: 1px solid light-dark(#b45309, #fbbf24);
   background: light-dark(#fffbeb, #422006);
@@ -219,6 +229,22 @@ main {
   flex-direction: column;
   gap: 0.15rem;
   align-items: flex-start;
+}
+
+.occurrence__details {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.occurrence__details:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }
 
 .occurrence__time {
@@ -271,4 +297,53 @@ main {
   border: 2px solid currentColor;
   font-size: 0.75rem;
   line-height: 1;
+}
+
+.occurrence__details-panel {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid light-dark(#cbd5e1, #475569);
+  font-size: 0.9rem;
+}
+
+.occurrence__details-panel p {
+  margin: 0 0 0.45rem;
+}
+
+[data-events-settings] form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0.5rem 0 1rem;
+}
+
+[data-events-settings] label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+[data-events-settings] label.event-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+[data-events-settings] ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+[data-events-settings] li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+
+[data-events-error] {
+  color: light-dark(#b91c1c, #fca5a5);
 }

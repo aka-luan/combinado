@@ -1,0 +1,251 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  fetchCurrentHouseholdId,
+  type MutationResult,
+} from "./children";
+import {
+  normalizeOneOffEventCreate,
+  type OneOffEventCreateInput,
+} from "./event-form";
+import { localDateInHousehold } from "./routine-form";
+
+export type {
+  OneOffEventCreateInput,
+  NormalizeOneOffEventResult,
+} from "./event-form";
+export { normalizeOneOffEventCreate } from "./event-form";
+
+export type OneOffEventRow = {
+  id: string;
+  householdId: string;
+  title: string;
+  targetKind: "casa" | "child";
+  childId: string | null;
+  localDate: string;
+  scheduledTime: string | null;
+  requiresConfirmation: boolean;
+  responsibleUserId: string | null;
+  createdBy: string;
+  createdAt: string;
+  cancelledAt: string | null;
+};
+
+type EventRpcResult = Record<string, unknown>;
+
+function asRecord(value: unknown): EventRpcResult | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as EventRpcResult)
+    : null;
+}
+
+function rpcCode(error: { message: string; code?: string }): string {
+  return error.code ?? error.message;
+}
+
+export async function listOneOffEvents(
+  client: SupabaseClient,
+): Promise<MutationResult<OneOffEventRow[]>> {
+  const today = localDateInHousehold();
+  const { data, error } = await client
+    .from("one_off_events")
+    .select(
+      "id, household_id, title, target_kind, child_id, local_date, scheduled_time, requires_confirmation, responsible_user_id, created_by, created_at, cancelled_at",
+    )
+    .gte("local_date", today)
+    .order("local_date", { ascending: true })
+    .order("scheduled_time", { ascending: true, nullsFirst: false })
+    .order("title", { ascending: true });
+
+  if (error) return { ok: false, error: { message: error.message, code: error.code } };
+  return {
+    ok: true,
+    data: (data ?? []).map((row) => ({
+      id: row.id as string,
+      householdId: row.household_id as string,
+      title: row.title as string,
+      targetKind: row.target_kind as "casa" | "child",
+      childId: (row.child_id as string | null) ?? null,
+      localDate: row.local_date as string,
+      scheduledTime: (row.scheduled_time as string | null) ?? null,
+      requiresConfirmation: Boolean(row.requires_confirmation),
+      responsibleUserId: (row.responsible_user_id as string | null) ?? null,
+      createdBy: row.created_by as string,
+      createdAt: row.created_at as string,
+      cancelledAt: (row.cancelled_at as string | null) ?? null,
+    })),
+  };
+}
+
+export async function createOneOffEvent(
+  client: SupabaseClient,
+  input: OneOffEventCreateInput,
+): Promise<MutationResult<{ id: string }>> {
+  const normalized = normalizeOneOffEventCreate(input, localDateInHousehold());
+  if (!normalized.ok) return { ok: false, error: { message: normalized.error } };
+
+  const household = await fetchCurrentHouseholdId(client);
+  if (!household.ok) return household;
+  if (!household.data) return { ok: false, error: { message: "household_missing" } };
+
+  const payload = normalized.data;
+  const { data, error } = await client.rpc("create_one_off_event", {
+    p_title: payload.title,
+    p_target_kind: payload.targetKind,
+    p_child_id: payload.childId,
+    p_local_date: payload.localDate,
+    p_scheduled_time: payload.scheduledTime,
+    p_requires_confirmation: payload.requiresConfirmation,
+    p_responsible_user_id: payload.responsibleUserId,
+  });
+  if (error) return { ok: false, error: { message: error.message, code: error.code } };
+
+  const result = asRecord(data);
+  const id = typeof result?.event_id === "string" ? result.event_id : null;
+  if (result?.ok !== true || !id) {
+    return { ok: false, error: { message: "event_create_invalid_response" } };
+  }
+  return { ok: true, data: { id } };
+}
+
+export type CompleteOneOffEventResult =
+  | {
+      ok: true;
+      confirmationId: string;
+      confirmedAt: string;
+      confirmedByUserId: string;
+      confirmedByDisplayName: string | null;
+      occurrenceKey: string;
+    }
+  | {
+      ok: false;
+      code:
+        | "already_completed"
+        | "not_confirmable_day"
+        | "not_confirmable"
+        | "cancelled"
+        | "event_not_found"
+        | "unknown";
+      confirmationId?: string;
+      confirmedAt?: string;
+      confirmedByUserId?: string;
+      confirmedByDisplayName?: string | null;
+      message?: string;
+    };
+
+export async function completeOneOffEvent(
+  client: SupabaseClient,
+  eventId: string,
+): Promise<CompleteOneOffEventResult> {
+  const { data, error } = await client.rpc("complete_one_off_event", {
+    p_event_id: eventId,
+  });
+  if (error) return { ok: false, code: "unknown", message: rpcCode(error) };
+  const row = asRecord(data);
+  if (!row) return { ok: false, code: "unknown", message: "empty_response" };
+
+  if (row.ok === true) {
+    return {
+      ok: true,
+      confirmationId: String(row.confirmation_id),
+      confirmedAt: String(row.confirmed_at),
+      confirmedByUserId: String(row.confirmed_by_user_id),
+      confirmedByDisplayName:
+        typeof row.confirmed_by_display_name === "string" ? row.confirmed_by_display_name : null,
+      occurrenceKey: String(row.occurrence_key),
+    };
+  }
+
+  const code = typeof row.code === "string" ? row.code : "unknown";
+  if (
+    code === "already_completed" ||
+    code === "not_confirmable_day" ||
+    code === "not_confirmable" ||
+    code === "cancelled" ||
+    code === "event_not_found"
+  ) {
+    return {
+      ok: false,
+      code,
+      confirmationId: typeof row.confirmation_id === "string" ? row.confirmation_id : undefined,
+      confirmedAt: typeof row.confirmed_at === "string" ? row.confirmed_at : undefined,
+      confirmedByUserId:
+        typeof row.confirmed_by_user_id === "string" ? row.confirmed_by_user_id : undefined,
+      confirmedByDisplayName:
+        typeof row.confirmed_by_display_name === "string" ? row.confirmed_by_display_name : null,
+    };
+  }
+  return { ok: false, code: "unknown" };
+}
+
+export type ReverseOneOffEventResult =
+  | {
+      ok: true;
+      confirmationId: string;
+      reversedAt: string;
+      originalConfirmedBy: string;
+      originalConfirmedAt: string;
+    }
+  | {
+      ok: false;
+      code: "confirmation_not_found" | "already_reversed" | "correction_window_closed" | "unknown";
+      message?: string;
+    };
+
+export async function reverseOneOffEventCompletion(
+  client: SupabaseClient,
+  confirmationId: string,
+): Promise<ReverseOneOffEventResult> {
+  const { data, error } = await client.rpc("reverse_event_completion", {
+    p_completion_id: confirmationId,
+  });
+  if (error) return { ok: false, code: "unknown", message: rpcCode(error) };
+  const row = asRecord(data);
+  if (!row) return { ok: false, code: "unknown", message: "empty_response" };
+  if (row.ok === true) {
+    return {
+      ok: true,
+      confirmationId: String(row.confirmation_id),
+      reversedAt: String(row.reversed_at),
+      originalConfirmedBy: String(row.original_confirmed_by),
+      originalConfirmedAt: String(row.original_confirmed_at),
+    };
+  }
+  const code = typeof row.code === "string" ? row.code : "unknown";
+  if (code === "confirmation_not_found" || code === "already_reversed" || code === "correction_window_closed") {
+    return { ok: false, code };
+  }
+  return { ok: false, code: "unknown" };
+}
+
+export type CancelOneOffEventResult =
+  | { ok: true; eventId: string; cancelledAt?: string; already?: boolean }
+  | {
+      ok: false;
+      code: "event_not_found" | "cancellation_window_closed" | "already_completed" | "unknown";
+      message?: string;
+    };
+
+export async function cancelOneOffEvent(
+  client: SupabaseClient,
+  eventId: string,
+): Promise<CancelOneOffEventResult> {
+  const { data, error } = await client.rpc("cancel_one_off_event", {
+    p_event_id: eventId,
+  });
+  if (error) return { ok: false, code: "unknown", message: rpcCode(error) };
+  const row = asRecord(data);
+  if (!row) return { ok: false, code: "unknown", message: "empty_response" };
+  if (row.ok === true) {
+    return {
+      ok: true,
+      eventId: String(row.event_id),
+      cancelledAt: typeof row.cancelled_at === "string" ? row.cancelled_at : undefined,
+      already: row.already === true,
+    };
+  }
+  const code = typeof row.code === "string" ? row.code : "unknown";
+  if (code === "event_not_found" || code === "cancellation_window_closed" || code === "already_completed") {
+    return { ok: false, code };
+  }
+  return { ok: false, code: "unknown" };
+}

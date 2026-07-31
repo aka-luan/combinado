@@ -6,7 +6,7 @@ export type OccurrenceStatus =
   | "cancelled"
   | "unrecorded";
 
-export type OccurrenceSource = "routine" | "medication";
+export type OccurrenceSource = "routine" | "medication" | "event";
 
 export type SnapshotOccurrence = {
   key: string;
