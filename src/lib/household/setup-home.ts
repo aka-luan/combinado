@@ -1,4 +1,4 @@
-/** First-run Hoje cue when the Casa has no active child (PRD §12.1 / issue #16). */
+/** Shared household/setup copy and PostgREST error classification. */
 
 export type HouseholdGate =
   | { kind: "ready" }
@@ -25,17 +25,59 @@ export function schemaMissingCopy(): string {
   return "O servidor da Casa ainda não tem as migrations aplicadas. Aplique supabase/migrations no projeto Supabase e rode o bootstrap.";
 }
 
+/** Pulls app exception tokens like `child_not_in_household` out of PostgREST wrappers. */
+export function extractAppErrorToken(message?: string): string | undefined {
+  if (!message) return undefined;
+  const trimmed = message.trim();
+  if (/^[a-z][a-z0-9_]+$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/\b([a-z][a-z0-9_]{2,})\b/);
+  const known = [
+    "household_missing",
+    "name_required",
+    "child_required",
+    "child_not_in_household",
+    "slots_required",
+    "duplicate_slots",
+    "invalid_slot",
+    "valid_from_required",
+    "invalid_valid_range",
+    "invalid_valid_until",
+  ];
+  for (const token of known) {
+    if (trimmed.includes(token)) return token;
+  }
+  return match?.[1];
+}
+
 export function isSchemaMissingError(code?: string, message?: string): boolean {
-  if (code === "PGRST202" || code === "42883" || code === "42P01") return true;
+  if (
+    code === "PGRST202" ||
+    code === "PGRST204" ||
+    code === "42883" ||
+    code === "42P01" ||
+    code === "42501"
+  ) {
+    return true;
+  }
   if (!message) return false;
+  const lower = message.toLowerCase();
   return (
-    message.includes("Could not find the function") ||
-    message.includes("does not exist")
+    lower.includes("could not find the function") ||
+    lower.includes("could not find the table") ||
+    lower.includes("does not exist") ||
+    lower.includes("permission denied for function") ||
+    lower.includes("permission denied for table") ||
+    lower.includes("schema cache")
   );
 }
 
+export function medicationSchemaMissingCopy(): string {
+  return "Falta aplicar a migration de medicamentos no Supabase (arquivo 20260730200000_medications.sql no SQL Editor). Depois: NOTIFY pgrst, 'reload schema';";
+}
+
 export function householdWriteErrorCopy(message?: string, code?: string): string {
-  if (message === "household_missing") return membershipMissingCopy();
+  const token = extractAppErrorToken(message);
+  if (token === "household_missing") return membershipMissingCopy();
   if (isSchemaMissingError(code, message)) return schemaMissingCopy();
   return "Não foi possível salvar.";
 }

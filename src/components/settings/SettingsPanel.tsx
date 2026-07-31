@@ -7,14 +7,24 @@ import { ChildrenSettings } from "@/components/household/ChildrenSettings";
 import { MedicationsSettings } from "@/components/household/MedicationsSettings";
 import { RoutinesSettings } from "@/components/household/RoutinesSettings";
 import { PushSettings } from "@/components/push/PushSettings";
+import { clearUserAgendaCache, getDefaultAgendaCacheStore } from "@/lib/sync/agenda-cache";
+import { useWritesAllowed } from "@/lib/sync/use-writes-allowed";
+import { setSyncPhase } from "@/lib/sync/writes-gate";
 
 export function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const client = getSupabaseBrowserClient();
+  const writesAllowed = useWritesAllowed();
 
   async function handleLogout() {
     if (!client) return;
+    const { data } = await client.auth.getSession();
+    const userId = data.session?.user?.id;
+    if (userId) {
+      await clearUserAgendaCache(userId, getDefaultAgendaCacheStore());
+    }
+    setSyncPhase("loading");
     await signOut(client);
   }
 
@@ -25,10 +35,17 @@ export function SettingsPanel() {
       </button>
       {open && (
         <div data-settings-content>
-          {client && <ChildrenSettings client={client} />}
-          {client && <RoutinesSettings client={client} />}
-          {client && <MedicationsSettings client={client} />}
-          {client && <PushSettings client={client} />}
+          {!writesAllowed ? (
+            <p data-settings-writes-blocked role="status">
+              Ações desabilitadas até reconectar e sincronizar.
+            </p>
+          ) : null}
+          <fieldset disabled={!writesAllowed} data-settings-writes={writesAllowed ? "on" : "off"}>
+            {client && <ChildrenSettings client={client} />}
+            {client && <RoutinesSettings client={client} />}
+            {client && <MedicationsSettings client={client} />}
+            {client && <PushSettings client={client} />}
+          </fieldset>
           {!confirming ? (
             <button type="button" onClick={() => setConfirming(true)}>
               Sair
@@ -36,7 +53,7 @@ export function SettingsPanel() {
           ) : (
             <div data-logout-confirm>
               <p>Encerrar sessão neste aparelho?</p>
-              <button type="button" onClick={handleLogout}>
+              <button type="button" onClick={() => void handleLogout()}>
                 Confirmar saída
               </button>
               <button type="button" onClick={() => setConfirming(false)}>

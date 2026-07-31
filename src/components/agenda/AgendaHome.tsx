@@ -1,62 +1,151 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { fetchAgendaSnapshot } from "@/lib/agenda/snapshot";
 import { tomorrowView } from "@/lib/agenda/presentation";
 import type { AgendaSnapshot } from "@/lib/agenda/types";
 import { HOUSEHOLD_CHANGED_EVENT } from "@/lib/household/events";
+import {
+  getAgendaCache,
+  getDefaultAgendaCacheStore,
+  putAgendaCache,
+} from "@/lib/sync/agenda-cache";
+import {
+  formatLastSyncLabel,
+  msUntilHouseholdMidnight,
+  REFETCH_INTERVAL_MS,
+  resolveOfflineAgendaView,
+  type OfflineAgendaView,
+} from "@/lib/sync/policy";
+import { getSyncPhase, setSyncPhase } from "@/lib/sync/writes-gate";
 import { OccurrenceRow } from "./OccurrenceRow";
 
 type LoadState =
   | { kind: "loading" }
   | { kind: "unavailable" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; snapshot: AgendaSnapshot };
+  | { kind: "online"; snapshot: AgendaSnapshot }
+  | { kind: "offline"; view: OfflineAgendaView };
 
 /**
- * Renders Hoje + Amanhã from the authoritative server snapshot (PRD §§7, 13).
+ * Renders Hoje + Amanhã from the authoritative server snapshot (PRD §§7, 13, 14).
+ * Realtime / reconnect / midnight only invalidate → full refetch; never patch locally.
  */
 export function AgendaHome() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [client, setClient] = useState<SupabaseClient | null>(null);
+  const userIdRef = useRef<string | null>(null);
+  const onlineRef = useRef(typeof navigator === "undefined" ? true : navigator.onLine);
+  const blockWritesUntilRefetchRef = useRef(false);
+
+  const applyOffline = useCallback(async (uid: string | null) => {
+    setSyncPhase("offline_cached");
+    blockWritesUntilRefetchRef.current = true;
+    if (!uid) {
+      setState({ kind: "offline", view: { kind: "unavailable" } });
+      return;
+    }
+    const cached = await getAgendaCache(getDefaultAgendaCacheStore(), uid);
+    setState({ kind: "offline", view: resolveOfflineAgendaView(cached, new Date()) });
+  }, []);
 
   const refresh = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
     setClient(supabase);
     if (!supabase) {
+      setSyncPhase("unavailable");
       setState({ kind: "unavailable" });
       return;
     }
 
+    const sessionResult = await supabase.auth.getSession();
+    const uid = sessionResult.data.session?.user?.id ?? null;
+    userIdRef.current = uid;
+
+    if (!onlineRef.current) {
+      await applyOffline(uid);
+      return;
+    }
+
+    if (blockWritesUntilRefetchRef.current || getSyncPhase() === "offline_cached") {
+      setSyncPhase("reconnecting");
+    }
+
     const result = await fetchAgendaSnapshot(supabase);
     if (!result.ok) {
+      const cached = uid ? await getAgendaCache(getDefaultAgendaCacheStore(), uid) : null;
+      if (cached) {
+        await applyOffline(uid);
+        return;
+      }
+      setSyncPhase("error");
       setState({ kind: "error", message: result.error.message });
       return;
     }
-    setState({ kind: "ready", snapshot: result.data });
-  }, []);
+
+    const syncedAt = new Date().toISOString();
+    if (uid) {
+      await putAgendaCache(getDefaultAgendaCacheStore(), uid, result.data, syncedAt);
+    }
+    blockWritesUntilRefetchRef.current = false;
+    setSyncPhase("online_ready");
+    setState({ kind: "online", snapshot: result.data });
+  }, [applyOffline]);
 
   useEffect(() => {
     void refresh();
-    const onChange = () => {
+
+    const onHousehold = () => {
       void refresh();
     };
-    window.addEventListener(HOUSEHOLD_CHANGED_EVENT, onChange);
+    window.addEventListener(HOUSEHOLD_CHANGED_EVENT, onHousehold);
+
     const onVisible = () => {
       if (document.visibilityState === "visible") void refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
-    const interval = window.setInterval(() => {
+
+    const onOnline = () => {
+      onlineRef.current = true;
+      blockWritesUntilRefetchRef.current = true;
+      setSyncPhase("reconnecting");
       void refresh();
-    }, 5 * 60 * 1000);
-    return () => {
-      window.removeEventListener(HOUSEHOLD_CHANGED_EVENT, onChange);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.clearInterval(interval);
     };
-  }, [refresh]);
+    const onOffline = () => {
+      onlineRef.current = false;
+      void applyOffline(userIdRef.current);
+    };
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+
+    const interval = window.setInterval(() => {
+      if (onlineRef.current) void refresh();
+    }, REFETCH_INTERVAL_MS);
+
+    let midnightTimer: number | undefined;
+    const scheduleMidnight = () => {
+      midnightTimer = window.setTimeout(() => {
+        if (onlineRef.current) {
+          void refresh();
+        } else {
+          void applyOffline(userIdRef.current);
+        }
+        scheduleMidnight();
+      }, msUntilHouseholdMidnight(new Date()) + 50);
+    };
+    scheduleMidnight();
+
+    return () => {
+      window.removeEventListener(HOUSEHOLD_CHANGED_EVENT, onHousehold);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.clearInterval(interval);
+      if (midnightTimer !== undefined) window.clearTimeout(midnightTimer);
+    };
+  }, [applyOffline, refresh]);
 
   // Realtime only invalidates; occurrences still come from a full snapshot refetch (PRD §13).
   useEffect(() => {
@@ -99,15 +188,55 @@ export function AgendaHome() {
     );
   }
 
-  const { snapshot } = state;
-  const tomorrow = tomorrowView(snapshot.tomorrow);
+  if (state.kind === "offline" && state.view.kind === "unavailable") {
+    return (
+      <p data-agenda="unavailable" role="status">
+        Dados indisponíveis.
+      </p>
+    );
+  }
+
+      const writesAllowed = state.kind === "online";
+  const snapshot =
+    state.kind === "online"
+      ? state.snapshot
+      : state.view.kind === "unavailable"
+        ? null
+        : state.view.snapshot;
+  if (!snapshot) return null;
+
+  const offlineMeta =
+    state.kind === "offline" && state.view.kind !== "unavailable" ? state.view : null;
+  const revealOverride =
+    offlineMeta && offlineMeta.kind === "same_day" ? offlineMeta.revealTomorrow : undefined;
+  const tomorrow = tomorrowView({
+    ...snapshot.tomorrow,
+    reveal: revealOverride === undefined ? snapshot.tomorrow.reveal : revealOverride,
+  });
+  const stale = offlineMeta?.kind === "stale_day" ? offlineMeta : null;
 
   return (
-    <section data-agenda="ready" data-agenda-version={snapshot.version}>
+    <section
+      data-agenda={state.kind === "online" ? "ready" : "offline"}
+      data-agenda-version={snapshot.version}
+      data-writes-allowed={writesAllowed ? "true" : "false"}
+    >
+      {offlineMeta ? (
+        <p data-agenda-offline-banner role="status">
+          {stale ? stale.staleLabel : `Offline · cache de ${formatShortDate(offlineMeta.cachedDate)}`}
+          <br />
+          {formatLastSyncLabel(offlineMeta.syncedAt, snapshot.timezone)}
+        </p>
+      ) : null}
+
       <header className="agenda__header">
-        <h2>Hoje</h2>
-        <p className="agenda__date" data-today-date={snapshot.today.local_date}>
-          {formatShortDate(snapshot.today.local_date)}
+        <h2>{stale ? "Registro em cache" : "Hoje"}</h2>
+        <p
+          className="agenda__date"
+          data-today-date={snapshot.today.local_date}
+          data-stale-day={stale ? "true" : undefined}
+        >
+          {stale ? stale.staleLabel : formatShortDate(snapshot.today.local_date)}
         </p>
       </header>
 
@@ -123,18 +252,21 @@ export function AgendaHome() {
               serverTime={snapshot.server_time}
               timezone={snapshot.timezone}
               client={client}
+              writesAllowed={writesAllowed}
               onChanged={refresh}
             />
           ))}
         </ul>
       )}
 
-      {tomorrow.mode === "count_only" ? (
+      {!stale && tomorrow.mode === "count_only" ? (
         <p data-tomorrow-count className="agenda__tomorrow-count">
           Amanhã: {tomorrow.count}{" "}
           {tomorrow.count === 1 ? "item" : "itens"}
         </p>
-      ) : (
+      ) : null}
+
+      {!stale && tomorrow.mode === "inline" ? (
         <section data-tomorrow-inline className="agenda__tomorrow">
           <header className="agenda__header">
             <h2>Amanhã</h2>
@@ -154,13 +286,14 @@ export function AgendaHome() {
                   serverTime={snapshot.server_time}
                   timezone={snapshot.timezone}
                   client={client}
+                  writesAllowed={writesAllowed}
                   onChanged={refresh}
                 />
               ))}
             </ul>
           )}
         </section>
-      )}
+      ) : null}
     </section>
   );
 }

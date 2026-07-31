@@ -22,6 +22,8 @@ type Props = {
   serverTime: string;
   timezone: string;
   client: SupabaseClient | null;
+  /** False while offline or awaiting reconnect refetch (PRD §14). */
+  writesAllowed?: boolean;
   onChanged: () => Promise<void>;
 };
 
@@ -31,6 +33,7 @@ export function OccurrenceRow({
   serverTime,
   timezone,
   client,
+  writesAllowed = true,
   onChanged,
 }: Props) {
   const alert = ownerAlertPresentation(occurrence);
@@ -41,8 +44,8 @@ export function OccurrenceRow({
   const [correctPrompt, setCorrectPrompt] = useState(false);
   const [, setTick] = useState(0);
 
-  const confirmable = isConfirmableDose(occurrence, day) && !busy;
-  const reversible = isReversibleDose(occurrence, day);
+  const confirmable = isConfirmableDose(occurrence, day) && !busy && writesAllowed;
+  const reversible = isReversibleDose(occurrence, day) && writesAllowed;
   const undoUntil = undoDeadlineFromServer(
     occurrence.confirmed_at ?? null,
     serverTime,
