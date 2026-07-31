@@ -174,6 +174,7 @@ depender de acesso administrativo para a manutenção comum:
 - os dois Adultos aparecem em uma lista compartilhada, mas troca de Adulto continua
   administrativa e deve preservar autoria, confirmações e auditoria.
 
-O PWA mostra o estado de backup como informação operacional. O backup real continua
-sendo o dump cifrado executado pelo GitHub Actions, conforme PRD §16; nenhuma chave
-ou senha de backup chega ao bundle estático.
+O PWA mostra o estado de backup como informação operacional (sucesso/falha e
+alerta após 26 h). O backup real continua sendo o dump cifrado executado pelo
+GitHub Actions, conforme PRD §16 e [`docs/runbook-backup.md`](./runbook-backup.md);
+nenhuma chave ou senha de backup chega ao bundle estático.

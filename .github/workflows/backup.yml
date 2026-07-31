@@ -1,0 +1,99 @@
+name: Household backup
+
+# Daily encrypted dump of production (PRD §16 / issue #13).
+# Best effort on GitHub Actions Free — no automatic paid overage.
+# Secrets: SUPABASE_DB_URL (direct Postgres), BACKUP_AGE_PUBLIC_KEY (age1…).
+# The age private key must NEVER be stored here — keep two offline controlled copies.
+
+on:
+  schedule:
+    # ~03:17 America/Sao_Paulo (06:17 UTC) — avoid top-of-hour free-tier congestion
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: household-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install age + PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age postgresql-client
+
+      - name: Dump, encrypt, and upload artifact
+        id: dump
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+          NODE_OPTIONS: --experimental-strip-types
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ] || [ -z "${BACKUP_AGE_PUBLIC_KEY:-}" ]; then
+            echo "Missing SUPABASE_DB_URL or BACKUP_AGE_PUBLIC_KEY secret" >&2
+            exit 1
+          fi
+          work="${RUNNER_TEMP}/combinado-backup"
+          mkdir -p "$work/dump"
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          artifact="$work/combinado-household-${stamp}.tar.gz.age"
+
+          # Redact any tooling noise that might echo URLs.
+          ./scripts/backup/with-redacted-logs.sh \
+            ./scripts/backup/dump-household.sh "$work/dump"
+          ./scripts/backup/with-redacted-logs.sh \
+            ./scripts/backup/encrypt-dump.sh "$work/dump" "$artifact"
+
+          # Plaintext must not leave the runner as an uploaded artifact.
+          rm -rf "$work/dump"
+          test -f "$artifact"
+          case "$artifact" in
+            *.age) ;;
+            *) echo "refusing to upload non-.age file" >&2; exit 1 ;;
+          esac
+
+          echo "artifact_path=$artifact" >>"$GITHUB_OUTPUT"
+          echo "artifact_name=combinado-household-${stamp}.tar.gz.age" >>"$GITHUB_OUTPUT"
+
+      - name: Upload encrypted artifact only
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.dump.outputs.artifact_name }}
+          path: ${{ steps.dump.outputs.artifact_path }}
+          retention-days: 7
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Record backup success
+        if: success()
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NODE_OPTIONS: --experimental-strip-types
+        run: ./scripts/backup/with-redacted-logs.sh node scripts/backup/record-status.mjs success
+
+      - name: Record backup failure
+        if: failure()
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NODE_OPTIONS: --experimental-strip-types
+        run: |
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "backup: cannot record failure without SUPABASE_DB_URL" >&2
+            exit 0
+          fi
+          ./scripts/backup/with-redacted-logs.sh \
+            node scripts/backup/record-status.mjs failure backup_job_failed || true

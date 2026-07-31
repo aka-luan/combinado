@@ -60,6 +60,7 @@ A agenda de Hoje/Amanhã vem de `household_agenda_snapshot` (ocorrências deriva
 Após o bootstrap, o adulto cadastra criança e rotina semanal em Configurações
 (`create_weekly_routine`); `seed_weekly_routine` fica só para testes/service role
 — ver o mesmo runbook.
+Backup cifrado e restauração: [docs/runbook-backup.md](./docs/runbook-backup.md).
 
 ## Web Push
 
@@ -86,6 +87,13 @@ GitHub (Settings → Secrets and variables → Actions):
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — anon/publishable key (pública por design; ainda assim
   fica fora do git e só entra no build via CI).
 - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — chave pública VAPID para `PushManager.subscribe`.
+
+Backup diário cifrado (PRD §16 / [`docs/runbook-backup.md`](./docs/runbook-backup.md))
+usa secrets adicionais no Actions — **nunca** no frontend:
+
+- `SUPABASE_DB_URL` — connection string Postgres direta (dump/status).
+- `BACKUP_AGE_PUBLIC_KEY` — recipient `age1…`. A chave privada permanece offline
+  em duas cópias controladas.
 
 Deploy manual (sem esperar o CI), com a Cloudflare CLI autenticada:
 `pnpm dlx wrangler@4 pages deploy out --project-name combinado`.
