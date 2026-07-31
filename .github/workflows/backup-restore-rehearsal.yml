@@ -1,0 +1,85 @@
+name: Backup restore rehearsal
+
+# Proves dump → age encrypt → decrypt → restore → verify on disposable Postgres.
+# Uses an ephemeral age keypair — the offline production private key is never loaded.
+# Best effort on GitHub Actions Free — no automatic paid overage (PRD §15.2 / §16).
+
+on:
+  schedule:
+    # Weekly Sunday ~04:40 America/Sao_Paulo (07:40 UTC)
+    - cron: "40 7 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-restore-rehearsal
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      source_db:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      target_db:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install age + PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age postgresql-client
+
+      - name: Seed representative household on source
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          set -euo pipefail
+          ./scripts/backup/with-redacted-logs.sh \
+            node scripts/backup/seed-rehearsal-source.mjs
+
+      - name: Run restoration rehearsal
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+          RESTORE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5433/postgres
+          NODE_OPTIONS: --experimental-strip-types
+        run: ./scripts/backup/with-redacted-logs.sh ./scripts/backup/rehearse-restore.sh
+
+      - name: Stamp production restore-rehearsal timestamp
+        if: success()
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NODE_OPTIONS: --experimental-strip-types
+        run: |
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "backup: SUPABASE_DB_URL unset; skipping production status stamp" >&2
+            exit 0
+          fi
+          ./scripts/backup/with-redacted-logs.sh \
+            node scripts/backup/record-status.mjs restore_rehearsal
