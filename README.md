@@ -33,6 +33,7 @@ pnpm run test:unit   # node --test, valida helpers de auth/push/household e o SW
 pnpm run test:rls    # Postgres: policies do household (CI; local skip se sem psql)
 pnpm run build       # next build → exporta site estático em out/, gera ícones e sw.js
 pnpm run test:e2e    # Playwright: registro do Service Worker, casca offline
+pnpm run test:production-gate  # gate PRD §21 (typecheck+unit+RLS; FULL=1 inclui build/e2e)
 pnpm test            # typecheck + test:unit + test:rls + build + test:e2e
 ```
 
@@ -63,6 +64,8 @@ Após o bootstrap, o adulto cadastra criança e rotina semanal em Configuraçõe
 Backup cifrado e restauração: [docs/runbook-backup.md](./docs/runbook-backup.md).
 Operação e diagnóstico do stack Free (monitor, exclusão total, tabletop):
 [docs/runbook-ops.md](./docs/runbook-ops.md).
+Gate de entrada em produção (dois iPhones, evidência PRD §21):
+[docs/production-gate.md](./docs/production-gate.md).
 
 ## Web Push
 

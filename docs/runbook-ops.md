@@ -18,6 +18,7 @@ Pointers por área:
 | Adultos / OTP / senha temporária | [runbook-auth.md](./runbook-auth.md) |
 | Push / VAPID / Cron | [runbook-push.md](./runbook-push.md) |
 | Backup / restauração | [runbook-backup.md](./runbook-backup.md) |
+| Gate de produção (dois iPhones) | [production-gate.md](./production-gate.md) |
 
 ## Contrato Free (best effort)
 

@@ -21,6 +21,8 @@ declare
   before_reveal timestamptz := ('2026-07-30 18:30:00'::timestamp AT TIME ZONE tz);
   -- Thursday 2026-07-30 19:00 local (reveal starts)
   at_reveal timestamptz := ('2026-07-30 19:00:00'::timestamp AT TIME ZONE tz);
+  -- Thursday 2026-07-30 22:00 local (still today; Amanhã remains revealed)
+  at_22h timestamptz := ('2026-07-30 22:00:00'::timestamp AT TIME ZONE tz);
   -- Friday 2026-07-31 00:00 local (tomorrow becomes today)
   at_midnight timestamptz := ('2026-07-31 00:00:00'::timestamp AT TIME ZONE tz);
   -- Thursday 08:31 local — late vs 08:30 routine
@@ -146,6 +148,18 @@ begin
   if (snap->'tomorrow'->'occurrences'->0->>'key')
      is distinct from ('routine:' || routine_id::text || ':2026-07-31') then
     raise exception 'tomorrow key mismatch';
+  end if;
+
+  -- At 22:00 local: still Thursday; Amanhã stays revealed (PRD §21 clock gate).
+  snap := public.household_agenda_snapshot(at_22h);
+  if (snap->'today'->>'local_date') is distinct from '2026-07-30' then
+    raise exception '22:00 must keep today as 2026-07-30, got %', snap->'today'->>'local_date';
+  end if;
+  if (snap->'tomorrow'->>'reveal')::boolean is not true then
+    raise exception '22:00 must keep tomorrow revealed';
+  end if;
+  if jsonb_array_length(snap->'tomorrow'->'occurrences') <> 1 then
+    raise exception '22:00 tomorrow should still list 1 occurrence';
   end if;
 
   -- Midnight: former tomorrow is today; new tomorrow (Sat) outside weekdays → empty.
