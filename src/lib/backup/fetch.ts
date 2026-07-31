@@ -1,9 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  formatBackupStatusMessage,
-  parseBackupStatusRow,
-  type BackupStatus,
-} from "./status";
+import { parseBackupStatusRow, type BackupStatus } from "./status";
 
 export async function fetchBackupStatus(
   client: SupabaseClient,
@@ -13,12 +9,4 @@ export async function fetchBackupStatus(
     return null;
   }
   return parseBackupStatusRow(data);
-}
-
-export async function loadBackupStatusMessage(
-  client: SupabaseClient,
-  now: Date = new Date(),
-): Promise<string> {
-  const status = await fetchBackupStatus(client);
-  return formatBackupStatusMessage(status, now);
 }
