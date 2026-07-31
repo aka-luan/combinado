@@ -14,7 +14,14 @@ export type {
   NormalizeRoutineResult,
 } from "./routine-form";
 export { normalizeWeeklyRoutineCreate, localDateInHousehold } from "./routine-form";
-export { setupHomeCopy, isHouseholdSetupNeeded } from "./setup-home";
+export {
+  setupHomeCopy,
+  isHouseholdSetupNeeded,
+  membershipMissingCopy,
+  schemaMissingCopy,
+  householdWriteErrorCopy,
+  isSchemaMissingError,
+} from "./setup-home";
 
 export type WeeklyRoutineListItem = {
   id: string;

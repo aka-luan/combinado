@@ -1,5 +1,12 @@
 /** Shared household/setup copy and PostgREST error classification. */
 
+export type HouseholdGate =
+  | { kind: "ready" }
+  | { kind: "setup_children" }
+  | { kind: "membership_missing" }
+  | { kind: "schema_missing" }
+  | { kind: "unavailable" };
+
 export function isHouseholdSetupNeeded(activeChildCount: number): boolean {
   return activeChildCount === 0;
 }
@@ -8,12 +15,14 @@ export function setupHomeCopy(): string {
   return "Configurar casa — cadastre uma criança e uma rotina semanal em Configurações, depois volte para Hoje.";
 }
 
+/** Shown when the Adult is authenticated but not linked to the singleton Casa. */
 export function membershipMissingCopy(): string {
   return "Esta conta ainda não faz parte da Casa. Peça o bootstrap no Supabase (SQL Editor → bootstrap_household) com o UUID deste Adulto — ver docs/runbook-household.md.";
 }
 
+/** Shown when household RPCs/tables are not deployed to the linked Supabase project. */
 export function schemaMissingCopy(): string {
-  return "Falta aplicar a migration de medicamentos no Supabase (arquivo 20260730200000_medications.sql no SQL Editor). Depois: NOTIFY pgrst, 'reload schema';";
+  return "O servidor da Casa ainda não tem as migrations aplicadas. Aplique supabase/migrations no projeto Supabase e rode o bootstrap.";
 }
 
 /** Pulls app exception tokens like `child_not_in_household` out of PostgREST wrappers. */
@@ -22,7 +31,6 @@ export function extractAppErrorToken(message?: string): string | undefined {
   const trimmed = message.trim();
   if (/^[a-z][a-z0-9_]+$/.test(trimmed)) return trimmed;
   const match = trimmed.match(/\b([a-z][a-z0-9_]{2,})\b/);
-  // Prefer known tokens when nested in longer PostgREST text.
   const known = [
     "household_missing",
     "name_required",
@@ -64,5 +72,12 @@ export function isSchemaMissingError(code?: string, message?: string): boolean {
 }
 
 export function medicationSchemaMissingCopy(): string {
-  return schemaMissingCopy();
+  return "Falta aplicar a migration de medicamentos no Supabase (arquivo 20260730200000_medications.sql no SQL Editor). Depois: NOTIFY pgrst, 'reload schema';";
+}
+
+export function householdWriteErrorCopy(message?: string, code?: string): string {
+  const token = extractAppErrorToken(message);
+  if (token === "household_missing") return membershipMissingCopy();
+  if (isSchemaMissingError(code, message)) return schemaMissingCopy();
+  return "Não foi possível salvar.";
 }

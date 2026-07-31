@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { listChildren, type ChildRow } from "@/lib/household/children";
+import {
+  fetchCurrentHouseholdId,
+  listChildren,
+  type ChildRow,
+} from "@/lib/household/children";
 import { notifyHouseholdChanged } from "@/lib/household/events";
 import {
   createMedication,
@@ -14,8 +18,11 @@ import { localDateInHousehold } from "@/lib/household/routine-form";
 import { partitionChildren } from "@/lib/household/partition";
 import {
   extractAppErrorToken,
+  householdWriteErrorCopy,
   isSchemaMissingError,
+  membershipMissingCopy,
   medicationSchemaMissingCopy,
+  schemaMissingCopy,
 } from "@/lib/household/setup-home";
 
 function mapMedicationError(message?: string, code?: string): string {
@@ -43,11 +50,13 @@ function mapMedicationError(message?: string, code?: string): string {
     case "invalid_valid_range":
       return "Data final deve ser após a inicial.";
     case "household_missing":
-      return "Casa ainda não configurada no servidor.";
-    default:
-      return message && message.length < 160 && !message.includes("\n")
-        ? `Não foi possível salvar o medicamento (${message}).`
-        : "Não foi possível salvar o medicamento.";
+      return householdWriteErrorCopy(message, code);
+    default: {
+      const mapped = householdWriteErrorCopy(message, code);
+      return mapped === "Não foi possível salvar."
+        ? "Não foi possível salvar o medicamento."
+        : mapped;
+    }
   }
 }
 
@@ -56,6 +65,7 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
   const [children, setChildren] = useState<ChildRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [householdReady, setHouseholdReady] = useState(false);
   const [interruptConfirmId, setInterruptConfirmId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
@@ -68,6 +78,25 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
   const activeChildren = useMemo(() => partitionChildren(children).active, [children]);
 
   const refresh = useCallback(async () => {
+    const household = await fetchCurrentHouseholdId(client);
+    if (!household.ok) {
+      setHouseholdReady(false);
+      setError(
+        isSchemaMissingError(household.error.code, household.error.message)
+          ? schemaMissingCopy()
+          : membershipMissingCopy(),
+      );
+      setMedications([]);
+      return;
+    }
+    if (!household.data) {
+      setHouseholdReady(false);
+      setError(membershipMissingCopy());
+      setMedications([]);
+      return;
+    }
+    setHouseholdReady(true);
+
     const [medsResult, childrenResult] = await Promise.all([
       listMedications(client),
       listChildren(client),
@@ -231,7 +260,7 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
           />
         </label>
 
-        <button type="submit" disabled={pending || activeChildren.length === 0}>
+        <button type="submit" disabled={pending || !householdReady || activeChildren.length === 0}>
           Adicionar medicamento
         </button>
       </form>

@@ -4,7 +4,11 @@ import {
   normalizeWeeklyRoutineCreate,
 } from "../../src/lib/household/routine-form.ts";
 import {
+  householdWriteErrorCopy,
   isHouseholdSetupNeeded,
+  isSchemaMissingError,
+  membershipMissingCopy,
+  schemaMissingCopy,
   setupHomeCopy,
 } from "../../src/lib/household/setup-home.ts";
 
@@ -116,6 +120,14 @@ test("isHouseholdSetupNeeded is true only with no active children", () => {
   assert.equal(isHouseholdSetupNeeded(1), false);
 });
 
+test("membership and schema gaps are distinct from the child+routine setup cue", () => {
+  assert.match(membershipMissingCopy(), /bootstrap_household/);
+  assert.doesNotMatch(membershipMissingCopy(), /Configurar casa/);
+  assert.match(schemaMissingCopy(), /migrations/);
+  assert.equal(isSchemaMissingError("PGRST202"), true);
+  assert.equal(isSchemaMissingError(undefined, "household_missing"), false);
+  assert.match(householdWriteErrorCopy("household_missing"), /bootstrap_household/);
+});
 test("medication schema errors point at the medications migration", async () => {
   const {
     extractAppErrorToken,

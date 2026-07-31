@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   archiveChild,
   createChild,
+  fetchCurrentHouseholdId,
   listChildren,
   renameChild,
   unarchiveChild,
@@ -12,31 +13,50 @@ import {
 } from "@/lib/household/children";
 import { notifyHouseholdChanged } from "@/lib/household/events";
 import { partitionChildren } from "@/lib/household/partition";
+import {
+  householdWriteErrorCopy,
+  isSchemaMissingError,
+  membershipMissingCopy,
+  schemaMissingCopy,
+} from "@/lib/household/setup-home";
 import { CASA_TARGET } from "@/lib/household/targets";
-
-function mapChildrenLoadError(code?: string, message?: string): string {
-  if (message === "household_missing") {
-    return "Casa ainda não configurada no servidor.";
-  }
-  // PostgREST / Postgres signals when membership or schema is missing.
-  if (code === "PGRST202" || code === "42883" || code === "42P01") {
-    return "Casa ainda não configurada no servidor.";
-  }
-  return "Não foi possível carregar as crianças.";
-}
 
 export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   const [children, setChildren] = useState<ChildRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [householdReady, setHouseholdReady] = useState(false);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
   const refresh = useCallback(async () => {
+    const household = await fetchCurrentHouseholdId(client);
+    if (!household.ok) {
+      setHouseholdReady(false);
+      setError(
+        isSchemaMissingError(household.error.code, household.error.message)
+          ? schemaMissingCopy()
+          : membershipMissingCopy(),
+      );
+      setChildren([]);
+      return;
+    }
+    if (!household.data) {
+      setHouseholdReady(false);
+      setError(membershipMissingCopy());
+      setChildren([]);
+      return;
+    }
+    setHouseholdReady(true);
+
     const result = await listChildren(client);
     if (!result.ok) {
-      setError(mapChildrenLoadError(result.error.code, result.error.message));
+      setError(
+        isSchemaMissingError(result.error.code, result.error.message)
+          ? schemaMissingCopy()
+          : "Não foi possível carregar as crianças.",
+      );
       setChildren([]);
       return;
     }
@@ -65,9 +85,7 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
       setError(
         result.error.message === "name_required"
           ? "Informe um nome."
-          : result.error.message === "household_missing"
-            ? "Casa ainda não configurada no servidor."
-            : "Não foi possível cadastrar.",
+          : householdWriteErrorCopy(result.error.message, result.error.code),
       );
       return;
     }
@@ -136,10 +154,10 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             autoComplete="off"
-            disabled={pending}
+            disabled={pending || !householdReady}
           />
         </label>
-        <button type="submit" disabled={pending}>
+        <button type="submit" disabled={pending || !householdReady}>
           Adicionar
         </button>
       </form>
