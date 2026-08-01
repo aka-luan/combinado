@@ -32,7 +32,15 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  useInteractionBusy(pending || editingId !== null || newName.trim().length > 0);
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
+  useInteractionBusy(
+    pending ||
+      editingId !== null ||
+      archiveConfirmId !== null ||
+      restoreConfirmId !== null ||
+      newName.trim().length > 0,
+  );
 
   const refresh = useCallback(async () => {
     const household = await fetchCurrentHouseholdId(client);
@@ -113,9 +121,14 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   }
 
   async function handleArchive(childId: string) {
+    if (archiveConfirmId !== childId) {
+      setArchiveConfirmId(childId);
+      return;
+    }
     setPending(true);
     setError(null);
     const result = await archiveChild(client, childId);
+    setArchiveConfirmId(null);
     setPending(false);
     if (!result.ok) {
       setError(
@@ -129,9 +142,14 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   }
 
   async function handleUnarchive(childId: string) {
+    if (restoreConfirmId !== childId) {
+      setRestoreConfirmId(childId);
+      return;
+    }
     setPending(true);
     setError(null);
     const result = await unarchiveChild(client, childId);
+    setRestoreConfirmId(null);
     setPending(false);
     if (!result.ok) {
       setError("Não foi possível reativar a criança.");
@@ -145,6 +163,7 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
   }
 
   const { active, archived } = partitionChildren(children, localDateInHousehold());
+  const nameError = error === "Informe um nome.";
 
   return (
     <section data-children-settings>
@@ -157,17 +176,21 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
 
       <form data-child-create onSubmit={handleCreate}>
         <label>
-          Nova criança
+          Nome da Criança
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             autoComplete="off"
             disabled={pending || !householdReady}
+            required
+            aria-describedby={nameError ? "child-name-error" : undefined}
           />
+          {nameError ? <span id="child-name-error" data-field-error>{error}</span> : null}
         </label>
-        <button type="submit" disabled={pending || !householdReady}>
-          Adicionar
-        </button>
+        <span className="child-form-actions">
+          <button type="submit" disabled={pending || !householdReady}>Salvar</button>
+          <button type="button" disabled={pending} onClick={() => setNewName("")}>Cancelar</button>
+        </span>
       </form>
 
       <h3>Ativas</h3>
@@ -179,11 +202,15 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
             <li key={child.id} data-child-id={child.id}>
               {editingId === child.id ? (
                 <form data-child-rename onSubmit={handleRename}>
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    disabled={pending}
-                  />
+                  <label>
+                    Nome da Criança
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      disabled={pending}
+                      required
+                    />
+                  </label>
                   <button type="submit" disabled={pending}>
                     Salvar
                   </button>
@@ -204,9 +231,21 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
                   >
                     Renomear
                   </button>
-                  <button type="button" disabled={pending} onClick={() => handleArchive(child.id)}>
-                    Arquivar
-                  </button>
+                  {archiveConfirmId === child.id ? (
+                    <span data-child-archive-confirm>
+                      <p>Arquivar esta Criança depois de resolver as dependências?</p>
+                      <button type="button" disabled={pending} onClick={() => void handleArchive(child.id)}>
+                        Confirmar arquivamento
+                      </button>
+                      <button type="button" disabled={pending} onClick={() => setArchiveConfirmId(null)}>
+                        Cancelar
+                      </button>
+                    </span>
+                  ) : (
+                    <button type="button" disabled={pending} onClick={() => void handleArchive(child.id)}>
+                      Arquivar
+                    </button>
+                  )}
                 </>
               )}
             </li>
@@ -226,9 +265,21 @@ export function ChildrenSettings({ client }: { client: SupabaseClient }) {
                     ? ` · reativação em ${child.active_from}`
                     : ""}
                 </span>
-                <button type="button" disabled={pending} onClick={() => handleUnarchive(child.id)}>
-                  Reativar amanhã
-                </button>
+                {restoreConfirmId === child.id ? (
+                  <span data-child-restore-confirm>
+                    <p>Reativar esta Criança a partir de amanhã?</p>
+                    <button type="button" disabled={pending} onClick={() => void handleUnarchive(child.id)}>
+                      Confirmar reativação
+                    </button>
+                    <button type="button" disabled={pending} onClick={() => setRestoreConfirmId(null)}>
+                      Cancelar
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" disabled={pending} onClick={() => void handleUnarchive(child.id)}>
+                    Reativar amanhã
+                  </button>
+                )}
               </li>
             ))}
           </ul>

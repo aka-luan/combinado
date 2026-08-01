@@ -30,6 +30,7 @@ export type OneOffEventRow = {
   createdBy: string;
   createdAt: string;
   cancelledAt: string | null;
+  planningRevisionId: string | null;
 };
 
 export type OneOffEventEditInput = OneOffEventCreateInput & {
@@ -64,9 +65,42 @@ export async function listOneOffEvents(
     .order("title", { ascending: true });
 
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
+  const rows = data ?? [];
+  const eventIds = rows.map((row) => row.id as string).filter(Boolean);
+  let revisions: Array<{ id: string; event_id: string; revision_number: number }> = [];
+  if (eventIds.length > 0) {
+    const revisionsResult = await client
+      .from("one_off_event_revisions")
+      .select("id, event_id, revision_number")
+      .in("event_id", eventIds)
+      .order("revision_number", { ascending: false });
+    if (revisionsResult.error) {
+      return {
+        ok: false,
+        error: {
+          message: revisionsResult.error.message,
+          code: revisionsResult.error.code,
+        },
+      };
+    }
+    revisions = (revisionsResult.data ?? []).map((row) => ({
+      id: row.id as string,
+      event_id: row.event_id as string,
+      revision_number: Number(row.revision_number),
+    }));
+  }
+  const currentRevisionByEvent = new Map<string, string>();
+  for (const revision of revisions) {
+    if (!currentRevisionByEvent.has(revision.event_id)) {
+      currentRevisionByEvent.set(revision.event_id, revision.id);
+    }
+  }
+  if (eventIds.some((eventId) => !currentRevisionByEvent.has(eventId))) {
+    return { ok: false, error: { message: "event_revision_missing" } };
+  }
   return {
     ok: true,
-    data: (data ?? []).map((row) => ({
+    data: rows.map((row) => ({
       id: row.id as string,
       householdId: row.household_id as string,
       title: row.title as string,
@@ -79,6 +113,7 @@ export async function listOneOffEvents(
       createdBy: row.created_by as string,
       createdAt: row.created_at as string,
       cancelledAt: (row.cancelled_at as string | null) ?? null,
+      planningRevisionId: currentRevisionByEvent.get(row.id as string) ?? null,
     })),
   };
 }
