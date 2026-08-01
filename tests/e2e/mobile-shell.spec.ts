@@ -31,7 +31,7 @@ function fakeJwt(payload: Record<string, unknown>): string {
 
 async function openAuthenticatedShell(
   page: Page,
-  options: { agenda?: "none" | "ready" | "error" | "setup" } = {},
+  options: { agenda?: "none" | "ready" | "error" | "setup" | "dense" | "tomorrow" } = {},
 ) {
   test.skip(!supabaseUrl, "Build-time Supabase URL is required for the authenticated shell");
 
@@ -163,7 +163,13 @@ async function openAuthenticatedShell(
       });
       return;
     }
-    if ((options.agenda === "ready" || options.agenda === "error") && url.includes("/weekly_routines?")) {
+    if (
+      (options.agenda === "ready" ||
+        options.agenda === "error" ||
+        options.agenda === "dense" ||
+        options.agenda === "tomorrow") &&
+      url.includes("/weekly_routines?")
+    ) {
       await route.fulfill({
         json: [
           {
@@ -197,13 +203,31 @@ async function openAuthenticatedShell(
         return;
       }
       if (snapshotGate) await snapshotGate;
+      const dense = options.agenda === "dense";
+      const tomorrow = options.agenda === "tomorrow";
+      const todayOccurrences = dense
+        ? Array.from({ length: 100 }, (_, index) => fixtureOccurrence(index + 1))
+        : tomorrow
+          ? [fixtureOccurrence(1)]
+          : [];
+      const tomorrowOccurrences = tomorrow ? [fixtureOccurrence(101, "2026-08-02")] : [];
       await route.fulfill({
         json: {
-          server_time: "2026-08-01T15:00:00.000Z",
+          server_time: tomorrow ? "2026-08-01T22:00:00.000Z" : "2026-08-01T15:00:00.000Z",
           timezone: "America/Sao_Paulo",
-          today: { empty_message: "Nada combinado para hoje", local_date: "2026-08-01", occurrences: [] },
-          tomorrow: { count: 0, empty_message: "Nada combinado para amanhã", local_date: "2026-08-02", occurrences: [], reveal: false },
-          version: "issue-52-test",
+          today: {
+            empty_message: todayOccurrences.length === 0 ? "Nada combinado para hoje" : null,
+            local_date: "2026-08-01",
+            occurrences: todayOccurrences,
+          },
+          tomorrow: {
+            count: tomorrowOccurrences.length,
+            empty_message: tomorrowOccurrences.length === 0 ? "Nada combinado para amanhã" : null,
+            local_date: "2026-08-02",
+            occurrences: tomorrowOccurrences,
+            reveal: tomorrow,
+          },
+          version: `issue-54-${options.agenda}`,
         },
       });
       return;
@@ -224,6 +248,33 @@ async function openAuthenticatedShell(
       snapshotGate = null;
       releaseSnapshotGate = null;
     },
+  };
+}
+
+function fixtureOccurrence(index: number, localDate = "2026-08-01") {
+  const padded = String(index).padStart(3, "0");
+  return {
+    key: `event:00000000-0000-4000-8000-0000000000${padded}:${localDate}`,
+    source: "event",
+    source_id: `00000000-0000-4000-8000-0000000000${padded}`,
+    local_date: localDate,
+    slot: null,
+    title:
+      index === 1
+        ? "Levar a Criança para uma atividade importante com um título comprido para detalhes"
+        : `Compromisso ${padded}`,
+    target_kind: "child",
+    child_id: "00000000-0000-4000-8000-000000000053",
+    target_label: index % 5 === 0 ? "Casa" : `Criança ${((index - 1) % 5) + 1}`,
+    scheduled_time: `${String(6 + ((index - 1) % 12)).padStart(2, "0")}:${String(index % 4).padStart(2, "0")}0`,
+    requires_confirmation: true,
+    owner_user_id: index % 3 === 0 ? null : "00000000-0000-4000-8000-000000000052",
+    owner_display_name: index % 3 === 0 ? null : "Adulto teste",
+    status: index === 100 ? "completed" : "scheduled",
+    needs_owner_alert: index % 3 === 0,
+    confirmed_by_display_name: index === 100 ? "Adulto teste" : null,
+    confirmed_at: index === 100 ? "2026-08-01T12:00:00.000Z" : null,
+    confirmation_id: index === 100 ? "00000000-0000-4000-8000-000000000099" : null,
   };
 }
 
@@ -409,6 +460,82 @@ test.describe("authenticated mobile shell", () => {
     );
     network.releaseSnapshots();
     await expect(page.locator('[data-shell-status="ready"]')).toBeVisible();
+  });
+
+  test("keeps the snapshot order while giving the first item a Próximo block", async ({ page }) => {
+    await openAuthenticatedShell(page, { agenda: "dense" });
+
+    await expect(page.locator("[data-agenda-next]")).toBeVisible();
+    await expect(page.locator("[data-agenda-next] h3")).toHaveText("Próximo");
+    await expect(page.locator("[data-agenda-next] [data-occurrence-key]")).toHaveAttribute(
+      "data-occurrence-key",
+      /0001:2026-08-01$/,
+    );
+    await expect(page.locator("[data-today-list] [data-occurrence-key]")).toHaveCount(99);
+    await expect(page.locator("[data-occurrence-key]").filter({ hasText: "Compromisso 100" })).toBeVisible();
+
+    const titles = await page.locator("[data-occurrence-key]").evaluateAll((rows) =>
+      rows.slice(0, 4).map((row) => row.querySelector(".occurrence__title")?.textContent),
+    );
+    expect(titles[0]).toContain("Levar a Criança");
+    expect(titles[1]).toBe("Compromisso 002");
+    expect(titles[2]).toBe("Compromisso 003");
+    expect(titles[3]).toBe("Compromisso 004");
+  });
+
+  test("opens one accessible bottom sheet and restores focus on Escape and Voltar", async ({ page }) => {
+    await openAuthenticatedShell(page, { agenda: "dense" });
+
+    const trigger = page.locator("[data-agenda-next] [data-occurrence-details]");
+    await trigger.click();
+    const sheet = page.locator("[data-occurrence-sheet]");
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toHaveAttribute("role", "dialog");
+    await expect(sheet).toHaveAttribute("aria-modal", "true");
+    await expect(sheet.getByRole("heading").first()).toBeFocused();
+    await expect(page.locator("[data-authenticated-shell]")).toHaveAttribute("inert", "");
+    await expect(page.locator("[data-occurrence-sheet]")).toHaveCount(1);
+
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await expect(page.locator("[data-occurrence-sheet]")).toBeVisible();
+    await page.evaluate(() => window.history.back());
+    await expect(page.locator("[data-occurrence-sheet]")).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test("reveals Amanhã at 19h and keeps it readable from a same-day offline cache", async ({
+    page,
+    context,
+  }) => {
+    await openAuthenticatedShell(page, { agenda: "tomorrow" });
+    await expect(page.locator("[data-tomorrow-inline]")).toBeVisible();
+    await expect(page.locator("[data-tomorrow-list] [data-occurrence-key]")).toHaveCount(1);
+
+    await context.setOffline(true);
+    await expect(page.locator('[data-agenda="offline"]')).toBeVisible();
+    await expect(page.locator("[data-tomorrow-inline]")).toBeVisible();
+    await expect(page.locator("[data-tomorrow-date]")).toHaveText("02/08");
+    await expect(page.locator("[data-agenda-operational-state]")).toContainText(
+      "ações bloqueadas",
+    );
+  });
+
+  test("shows the primary decision but blocks its write while offline", async ({ page, context }) => {
+    await openAuthenticatedShell(page, { agenda: "dense" });
+    const confirm = page.locator('[data-agenda-next] [data-complete-event="true"]');
+    await expect(confirm).toBeEnabled();
+
+    await context.setOffline(true);
+    await expect(page.locator('[data-agenda="offline"]')).toBeVisible();
+    await expect(confirm).toBeDisabled();
+    await expect(page.locator('[data-agenda="offline"]')).toHaveAttribute(
+      "data-writes-allowed",
+      "false",
+    );
   });
 
   test("explains an update error without claiming persistence", async ({ page }) => {
