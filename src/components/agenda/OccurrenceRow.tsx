@@ -119,6 +119,10 @@ export function OccurrenceRow({
   ]);
 
   useEffect(() => {
+    if (!writesAllowed) setEarlyPrompt(false);
+  }, [writesAllowed]);
+
+  useEffect(() => {
     if (!detailsOpen || !routineCanShowActions || !client) return;
     void listHouseholdMembers(client).then((result) => {
       if (result.ok) setRoutineMembers(result.data);
@@ -137,7 +141,7 @@ export function OccurrenceRow({
   }, [undoUntil]);
 
   async function runConfirm(acknowledgeEarly: boolean) {
-    if (!client) return;
+    if (!client || !writesAllowed) return;
     setEarlyPrompt(false);
 
     await runWithSeparatedPhases({
@@ -205,7 +209,7 @@ export function OccurrenceRow({
   }
 
   async function handleConfirmClick() {
-    if (!client) return;
+    if (!client || !writesAllowed) return;
     if (occurrence.source === "event") {
       await runConfirm(false);
       return;
@@ -352,7 +356,6 @@ export function OccurrenceRow({
           data-occurrence-details
           aria-expanded={detailsOpen}
           aria-haspopup="dialog"
-          aria-label={`Detalhes: ${occurrence.title}`}
           onClick={onOpenDetails}
         >
           <span className="occurrence__summary">
@@ -370,7 +373,7 @@ export function OccurrenceRow({
 
         <div className="occurrence__primary-action">
           {confirmableEligible ? (
-            earlyPrompt ? (
+            earlyPrompt && writesAllowed ? (
               <div className="occurrence__confirmation-prompt" data-early-confirm>
                 <p>Confirmar esta dose agora?</p>
                 <button type="button" onClick={() => void runConfirm(true)}>
@@ -537,6 +540,11 @@ export function OccurrenceRow({
               </div>
             ) : (
               <div data-routine-exception-form>
+                {routineAction === "cancel" ? (
+                  <p data-routine-cancel-confirm>
+                    Cancelar esta ocorrência da rotina?
+                  </p>
+                ) : null}
                 {routineAction === "details" ? (
                   <label>
                     <input
@@ -575,7 +583,7 @@ export function OccurrenceRow({
                 ) : null}
                 <div className="occurrence-sheet__actions">
                   <button type="button" disabled={busy} onClick={() => void handleRoutineSave()}>
-                    Confirmar alteração
+                    {routineAction === "cancel" ? "Confirmar cancelamento" : "Confirmar alteração"}
                   </button>
                   <button type="button" disabled={busy} onClick={() => setRoutineAction(null)}>
                     Voltar

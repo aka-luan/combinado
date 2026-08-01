@@ -487,6 +487,9 @@ test.describe("authenticated mobile shell", () => {
     await openAuthenticatedShell(page, { agenda: "dense" });
 
     const trigger = page.locator("[data-agenda-next] [data-occurrence-details]");
+    await expect(trigger).toHaveAccessibleName(
+      /06:010.*Levar a Criança.*Criança 1.*Programado.*Responsável: Adulto teste/,
+    );
     await trigger.click();
     const sheet = page.locator("[data-occurrence-sheet]");
     await expect(sheet).toBeVisible();
