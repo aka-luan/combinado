@@ -132,7 +132,9 @@ async function openAuthenticatedShell(
 }
 
 test.describe("authenticated mobile shell", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
+  // Keep mocked Supabase requests routable after reconnect; WebKit bypasses
+  // Playwright routes for requests controlled by a service worker.
+  test.use({ serviceWorkers: "block", viewport: { width: 390, height: 844 } });
 
   test("identifies the Casa, Hoje, privacy, and Configurações", async ({ page }) => {
     await openAuthenticatedShell(page);
