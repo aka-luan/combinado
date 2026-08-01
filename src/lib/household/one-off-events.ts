@@ -5,6 +5,7 @@ import {
 } from "./children";
 import {
   normalizeOneOffEventCreate,
+  normalizeOneOffEventEdit,
   type OneOffEventCreateInput,
 } from "./event-form";
 import { localDateInHousehold } from "./routine-form";
@@ -14,6 +15,7 @@ export type {
   NormalizeOneOffEventResult,
 } from "./event-form";
 export { normalizeOneOffEventCreate } from "./event-form";
+export { normalizeOneOffEventEdit } from "./event-form";
 
 export type OneOffEventRow = {
   id: string;
@@ -28,6 +30,11 @@ export type OneOffEventRow = {
   createdBy: string;
   createdAt: string;
   cancelledAt: string | null;
+};
+
+export type OneOffEventEditInput = OneOffEventCreateInput & {
+  eventId: string;
+  expectedRevisionId: string;
 };
 
 type EventRpcResult = Record<string, unknown>;
@@ -105,6 +112,48 @@ export async function createOneOffEvent(
     return { ok: false, error: { message: "event_create_invalid_response" } };
   }
   return { ok: true, data: { id } };
+}
+
+export type EditOneOffEventResult = MutationResult<{
+  eventId: string;
+  planningRevisionId: string;
+  revisionNumber: number | null;
+  localDate: string;
+}>;
+
+export async function editOneOffEvent(
+  client: SupabaseClient,
+  input: OneOffEventEditInput,
+): Promise<EditOneOffEventResult> {
+  const normalized = normalizeOneOffEventEdit(input, localDateInHousehold());
+  if (!normalized.ok) return { ok: false, error: { message: normalized.error } };
+  const payload = normalized.data;
+  const { data, error } = await client.rpc("edit_one_off_event", {
+    p_event_id: input.eventId,
+    p_expected_revision_id: input.expectedRevisionId,
+    p_title: payload.title,
+    p_target_kind: payload.targetKind,
+    p_child_id: payload.childId,
+    p_local_date: payload.localDate,
+    p_scheduled_time: payload.scheduledTime,
+    p_requires_confirmation: payload.requiresConfirmation,
+    p_responsible_user_id: payload.responsibleUserId,
+  });
+  if (error) return { ok: false, error: { message: error.message, code: error.code } };
+  const row = asRecord(data);
+  if (row?.ok !== true || typeof row.event_id !== "string" || typeof row.planning_revision_id !== "string") {
+    const message = typeof row?.code === "string" ? row.code : "invalid_event_edit_response";
+    return { ok: false, error: { message } };
+  }
+  return {
+    ok: true,
+    data: {
+      eventId: row.event_id,
+      planningRevisionId: row.planning_revision_id,
+      revisionNumber: typeof row.revision_number === "number" ? row.revision_number : null,
+      localDate: typeof row.local_date === "string" ? row.local_date : payload.localDate,
+    },
+  };
 }
 
 export type CompleteOneOffEventResult =

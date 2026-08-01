@@ -204,6 +204,20 @@ export function AgendaHome() {
           void refresh();
         },
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "routine_completions" },
+        () => {
+          void refresh();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "one_off_event_revisions" },
+        () => {
+          void refresh();
+        },
+      )
       .subscribe((status, err) => {
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           void recordRealtimeChannelError(client, status, err);
