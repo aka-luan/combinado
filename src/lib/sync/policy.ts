@@ -133,7 +133,10 @@ export function resolveOfflineAgendaView(
     snapshot: cache.snapshot,
     syncedAt: cache.syncedAt,
     cachedDate,
-    revealTomorrow,
+    // A valid same-day snapshot may already have revealed Amanhã. Preserve
+    // that server decision offline while still revealing a cached list when
+    // the household clock has since crossed 19:00.
+    revealTomorrow: cache.snapshot.tomorrow.reveal || revealTomorrow,
   };
 }
 

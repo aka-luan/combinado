@@ -665,7 +665,7 @@ body:has(.pwa-update-banner) main {
 }
 
 [data-agenda] {
-  width: min(100%, 28rem);
+  width: min(100%, 42rem);
   text-align: left;
 }
 
@@ -688,6 +688,65 @@ body:has(.pwa-update-banner) main {
   opacity: 0.8;
 }
 
+.agenda__operational-state {
+  margin: 0 0 0.8rem;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.agenda__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-error);
+}
+
+.agenda__error p {
+  margin: 0;
+}
+
+.agenda__error button {
+  min-height: 44px;
+  border: 1px solid var(--color-error);
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.agenda__next {
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+  padding: 0.8rem;
+  background: var(--color-surface);
+  box-shadow: 0 0.45rem 1.25rem color-mix(in srgb, var(--color-brand-strong) 8%, transparent);
+}
+
+.agenda__section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.agenda__section-heading h3 {
+  margin: 0;
+  color: var(--color-brand-strong);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.agenda__section-heading span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .agenda__tomorrow {
   margin-top: 1.5rem;
   padding-top: 1rem;
@@ -706,12 +765,21 @@ body:has(.pwa-update-banner) main {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
+}
+
+.occurrence-list--compact {
+  gap: 0.35rem;
+}
+
+.occurrence-list--next {
+  gap: 0;
 }
 
 .occurrence {
-  padding: 0.65rem 0.75rem;
-  border-radius: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
   background: var(--color-surface-soft);
 }
 
@@ -730,10 +798,18 @@ body:has(.pwa-update-banner) main {
   background: color-mix(in srgb, var(--color-attention) 12%, var(--color-surface));
 }
 
+.occurrence__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+}
+
 .occurrence__main {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  min-width: 0;
+  gap: 0.3rem;
   align-items: flex-start;
 }
 
@@ -748,6 +824,21 @@ body:has(.pwa-update-banner) main {
   cursor: pointer;
 }
 
+.occurrence__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  width: 100%;
+  gap: 0.65rem;
+  align-items: baseline;
+}
+
+.occurrence__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.65rem;
+  width: 100%;
+}
+
 .occurrence__details:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
@@ -759,7 +850,9 @@ body:has(.pwa-update-banner) main {
 }
 
 .occurrence__title {
-  font-size: 1.05rem;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 650;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -775,22 +868,23 @@ body:has(.pwa-update-banner) main {
 
 .occurrence__target,
 .occurrence__status,
-.occurrence__owner,
-.occurrence__instruction {
+.occurrence__owner {
   font-size: 0.85rem;
   opacity: 0.85;
 }
 
-.occurrence__actions {
-  margin-top: 0.5rem;
+.occurrence__primary-action,
+.occurrence-sheet__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
   align-items: center;
 }
 
-.occurrence__actions button,
 .occurrence__details,
+.occurrence__primary-action button,
+.occurrence__confirmation-prompt button,
+.occurrence-sheet button,
 .pwa-update-banner button,
 [data-settings-content] button,
 [data-login-step] button {
@@ -798,10 +892,50 @@ body:has(.pwa-update-banner) main {
   min-width: 44px;
 }
 
-.occurrence__actions button {
+.occurrence__primary-action button,
+.occurrence__confirmation-prompt button,
+.occurrence-sheet button {
   font: inherit;
   font-size: 0.9rem;
   padding: 0.45rem 0.75rem;
+}
+
+.occurrence__primary-button {
+  border: 1px solid var(--color-brand-strong);
+  border-radius: 999px;
+  background: var(--color-brand-strong);
+  color: var(--color-on-brand);
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.occurrence__primary-action button:disabled,
+.occurrence-sheet button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.occurrence__persisting {
+  color: var(--color-persisted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.occurrence__confirmation-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.occurrence__confirmation-prompt p {
+  width: 100%;
+  margin: 0;
+  color: var(--color-attention);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .occurrence__alert {
@@ -826,15 +960,155 @@ body:has(.pwa-update-banner) main {
   line-height: 1;
 }
 
-.occurrence__details-panel {
-  margin-top: 0.6rem;
-  padding-top: 0.55rem;
+.occurrence-sheet__backdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: color-mix(in srgb, var(--color-text) 38%, transparent);
+  cursor: default;
+}
+
+.occurrence-sheet {
+  position: fixed;
+  z-index: 91;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 42rem);
+  max-height: min(90dvh, 46rem);
+  margin-inline: auto;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  border-radius: 1.1rem 1.1rem 0 0;
+  padding: 0.6rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 -0.8rem 2.5rem color-mix(in srgb, var(--color-text) 18%, transparent);
+}
+
+.occurrence-sheet__handle {
+  width: 2.5rem;
+  height: 0.25rem;
+  margin: 0 auto 0.75rem;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.occurrence-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.occurrence-sheet__eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.occurrence-sheet h2 {
+  max-width: 30rem;
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.occurrence-sheet__close {
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-brand-strong);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.occurrence-sheet__content {
+  overflow: auto;
+  padding-top: 0.9rem;
+  overscroll-behavior: contain;
+}
+
+.occurrence-sheet__content section {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--color-border);
+}
+
+.occurrence-sheet__content h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+}
+
+.occurrence-sheet__content p {
+  margin: 0 0 0.55rem;
+  line-height: 1.45;
+}
+
+.occurrence-sheet__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.occurrence-sheet__facts p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
   font-size: 0.9rem;
 }
 
-.occurrence__details-panel p {
-  margin: 0 0 0.45rem;
+.occurrence-sheet__facts strong {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.occurrence-sheet__alert {
+  color: var(--color-attention);
+  font-weight: 700;
+}
+
+.occurrence-sheet__feedback {
+  margin-top: 1rem !important;
+  color: var(--color-error);
+  font-weight: 650;
+}
+
+.occurrence-sheet__record-actions {
+  margin-bottom: 0.25rem;
+}
+
+[data-occurrence-write-blocked] {
+  color: var(--color-offline);
+}
+
+@media (max-width: 30rem) {
+  .occurrence__line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .occurrence__primary-action {
+    justify-content: flex-start;
+  }
+
+  .occurrence__primary-button {
+    width: 100%;
+  }
 }
 
 [data-events-settings] form {

@@ -84,6 +84,20 @@ test("resolveOfflineAgendaView does not reveal Amanhã before 19h offline", () =
   assert.equal(view.revealTomorrow, false);
 });
 
+test("resolveOfflineAgendaView preserves Amanhã already revealed by the cached snapshot", () => {
+  const revealedCache = {
+    ...cache,
+    snapshot: {
+      ...cache.snapshot,
+      tomorrow: { ...cache.snapshot.tomorrow, reveal: true },
+    },
+  };
+  const view = resolveOfflineAgendaView(revealedCache, new Date("2026-07-30T21:00:00Z"));
+  assert.equal(view.kind, "same_day");
+  if (view.kind !== "same_day") return;
+  assert.equal(view.revealTomorrow, true);
+});
+
 test("offline midnight labels yesterday's cache with its original date", () => {
   // 00:30 America/Sao_Paulo on 2026-07-31
   const now = new Date("2026-07-31T03:30:00Z");

@@ -37,6 +37,8 @@ type LoadState =
 export function AgendaHome() {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [client, setClient] = useState<SupabaseClient | null>(null);
+  const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const userIdRef = useRef<string | null>(null);
   const onlineRef = useRef(typeof navigator === "undefined" ? true : navigator.onLine);
   const blockWritesUntilRefetchRef = useRef(false);
@@ -75,6 +77,7 @@ export function AgendaHome() {
 
     if (blockWritesUntilRefetchRef.current || getSyncPhase() === "offline_cached") {
       setSyncPhase("reconnecting");
+      setReconnecting(true);
     }
 
     const result = await fetchAgendaSnapshot(supabase);
@@ -94,6 +97,7 @@ export function AgendaHome() {
       await putAgendaCache(getDefaultAgendaCacheStore(), uid, result.data, syncedAt);
     }
     blockWritesUntilRefetchRef.current = false;
+    setReconnecting(false);
     setLastSyncedAt(syncedAt);
     setSyncPhase("online_ready");
     setState({ kind: "online", snapshot: result.data });
@@ -120,6 +124,7 @@ export function AgendaHome() {
     };
     const onOffline = () => {
       onlineRef.current = false;
+      setReconnecting(false);
       void applyOffline(userIdRef.current);
     };
     window.addEventListener("online", onOnline);
@@ -219,21 +224,24 @@ export function AgendaHome() {
 
   if (state.kind === "error") {
     return (
-      <p data-agenda="error" role="alert">
-        Não foi possível carregar a agenda.
-      </p>
+      <div data-agenda="error" role="alert" className="agenda__error">
+        <p>Não foi possível carregar o Registro. Nada foi alterado.</p>
+        <button type="button" onClick={() => void refresh()}>
+          Tentar novamente
+        </button>
+      </div>
     );
   }
 
   if (state.kind === "offline" && state.view.kind === "unavailable") {
     return (
-      <p data-agenda="unavailable" role="status">
-        Dados indisponíveis.
+      <p data-agenda="unavailable" role="status" className="agenda__error">
+        Dados indisponíveis neste aparelho. O Registro está bloqueado até uma atualização.
       </p>
     );
   }
 
-      const writesAllowed = state.kind === "online";
+  const writesAllowed = state.kind === "online" && !reconnecting;
   const snapshot =
     state.kind === "online"
       ? state.snapshot
@@ -252,6 +260,24 @@ export function AgendaHome() {
   });
   const stale = offlineMeta?.kind === "stale_day" ? offlineMeta : null;
 
+  const renderOccurrence = (occurrence: AgendaSnapshot["today"]["occurrences"][number], day: "today" | "tomorrow") => (
+    <OccurrenceRow
+      key={occurrence.key}
+      occurrence={occurrence}
+      day={day}
+      serverTime={snapshot.server_time}
+      timezone={snapshot.timezone}
+      client={client}
+      writesAllowed={writesAllowed}
+      onChanged={refresh}
+      detailsOpen={openOccurrenceKey === occurrence.key}
+      onOpenDetails={() => setOpenOccurrenceKey(occurrence.key)}
+      onCloseDetails={() => setOpenOccurrenceKey(null)}
+    />
+  );
+
+  const [nextOccurrence, ...remainingToday] = snapshot.today.occurrences;
+
   return (
     <section
       data-agenda={state.kind === "online" ? "ready" : "offline"}
@@ -265,6 +291,12 @@ export function AgendaHome() {
           {formatLastSyncLabel(offlineMeta.syncedAt, snapshot.timezone)}
         </p>
       ) : null}
+
+      <p className="agenda__operational-state" data-agenda-operational-state role="status">
+        {writesAllowed
+          ? "Registro atualizado · ações disponíveis"
+          : "Leitura disponível · ações bloqueadas até atualizar o Registro"}
+      </p>
 
       <header className="agenda__header">
         <h2>{stale ? "Registro em cache" : "Hoje"}</h2>
@@ -280,20 +312,24 @@ export function AgendaHome() {
       {snapshot.today.empty_message ? (
         <p data-today-empty>{snapshot.today.empty_message}</p>
       ) : (
-        <ul data-today-list className="occurrence-list">
-          {snapshot.today.occurrences.map((occ) => (
-            <OccurrenceRow
-              key={occ.key}
-              occurrence={occ}
-              day="today"
-              serverTime={snapshot.server_time}
-              timezone={snapshot.timezone}
-              client={client}
-              writesAllowed={writesAllowed}
-              onChanged={refresh}
-            />
-          ))}
-        </ul>
+        <>
+          {nextOccurrence ? (
+            <section data-agenda-next className="agenda__next">
+              <div className="agenda__section-heading">
+                <h3>Próximo</h3>
+                <span>{nextOccurrence.scheduled_time ?? "Sem horário"}</span>
+              </div>
+              <ul className="occurrence-list occurrence-list--next">
+                {renderOccurrence(nextOccurrence, "today")}
+              </ul>
+            </section>
+          ) : null}
+          {remainingToday.length > 0 ? (
+            <ul data-today-list className="occurrence-list occurrence-list--compact">
+              {remainingToday.map((occ) => renderOccurrence(occ, "today"))}
+            </ul>
+          ) : null}
+        </>
       )}
 
       {!stale && tomorrow.mode === "count_only" ? (
@@ -314,19 +350,8 @@ export function AgendaHome() {
           {tomorrow.empty_message ? (
             <p data-tomorrow-empty>{tomorrow.empty_message}</p>
           ) : (
-            <ul data-tomorrow-list className="occurrence-list">
-              {tomorrow.occurrences.map((occ) => (
-                <OccurrenceRow
-                  key={occ.key}
-                  occurrence={occ}
-                  day="tomorrow"
-                  serverTime={snapshot.server_time}
-                  timezone={snapshot.timezone}
-                  client={client}
-                  writesAllowed={writesAllowed}
-                  onChanged={refresh}
-                />
-              ))}
+            <ul data-tomorrow-list className="occurrence-list occurrence-list--compact">
+              {tomorrow.occurrences.map((occ) => renderOccurrence(occ, "tomorrow"))}
             </ul>
           )}
         </section>
