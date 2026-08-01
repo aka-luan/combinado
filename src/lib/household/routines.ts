@@ -307,3 +307,113 @@ export async function createWeeklyRoutine(
   if (error) return { ok: false, error: { message: error.message, code: error.code } };
   return { ok: true, data: { id: data as string } };
 }
+
+export type CompleteWeeklyRoutineResult =
+  | {
+      ok: true;
+      confirmationId: string;
+      confirmedAt: string;
+      confirmedByUserId: string;
+      confirmedByDisplayName: string | null;
+      occurrenceKey: string;
+    }
+  | {
+      ok: false;
+      code:
+        | "already_completed"
+        | "not_confirmable_day"
+        | "not_confirmable"
+        | "cancelled"
+        | "routine_not_scheduled"
+        | "unknown";
+      confirmationId?: string;
+      confirmedAt?: string;
+      confirmedByUserId?: string;
+      confirmedByDisplayName?: string | null;
+      message?: string;
+    };
+
+export async function completeWeeklyRoutine(
+  client: SupabaseClient,
+  routineId: string,
+  localDate: string,
+): Promise<CompleteWeeklyRoutineResult> {
+  const { data, error } = await client.rpc("complete_weekly_routine", {
+    p_routine_id: routineId,
+    p_local_date: localDate,
+  });
+  if (error) return { ok: false, code: "unknown", message: error.message };
+  const row = data as Record<string, unknown> | null;
+  if (!row) return { ok: false, code: "unknown", message: "empty_response" };
+  if (row.ok === true) {
+    return {
+      ok: true,
+      confirmationId: String(row.confirmation_id),
+      confirmedAt: String(row.confirmed_at),
+      confirmedByUserId: String(row.confirmed_by_user_id),
+      confirmedByDisplayName:
+        typeof row.confirmed_by_display_name === "string" ? row.confirmed_by_display_name : null,
+      occurrenceKey: String(row.occurrence_key),
+    };
+  }
+  const code = typeof row.code === "string" ? row.code : "unknown";
+  if (
+    code === "already_completed" ||
+    code === "not_confirmable_day" ||
+    code === "not_confirmable" ||
+    code === "cancelled" ||
+    code === "routine_not_scheduled"
+  ) {
+    return {
+      ok: false,
+      code,
+      confirmationId: typeof row.confirmation_id === "string" ? row.confirmation_id : undefined,
+      confirmedAt: typeof row.confirmed_at === "string" ? row.confirmed_at : undefined,
+      confirmedByUserId:
+        typeof row.confirmed_by_user_id === "string" ? row.confirmed_by_user_id : undefined,
+      confirmedByDisplayName:
+        typeof row.confirmed_by_display_name === "string" ? row.confirmed_by_display_name : null,
+    };
+  }
+  return { ok: false, code: "unknown" };
+}
+
+export type ReverseWeeklyRoutineResult =
+  | {
+      ok: true;
+      confirmationId: string;
+      reversedAt: string;
+      originalConfirmedBy: string;
+      originalConfirmedAt: string;
+    }
+  | {
+      ok: false;
+      code: "confirmation_not_found" | "already_reversed" | "correction_window_closed" | "unknown";
+      message?: string;
+    };
+
+export async function reverseWeeklyRoutineCompletion(
+  client: SupabaseClient,
+  confirmationId: string,
+): Promise<ReverseWeeklyRoutineResult> {
+  const { data, error } = await client.rpc("reverse_weekly_routine_completion", {
+    p_completion_id: confirmationId,
+  });
+  if (error) return { ok: false, code: "unknown", message: error.message };
+  const row = data as Record<string, unknown> | null;
+  if (!row) return { ok: false, code: "unknown", message: "empty_response" };
+  if (row.ok === true) {
+    return {
+      ok: true,
+      confirmationId: String(row.confirmation_id),
+      reversedAt: String(row.reversed_at),
+      originalConfirmedBy: String(row.original_confirmed_by),
+      originalConfirmedAt: String(row.original_confirmed_at),
+    };
+  }
+  const code = typeof row.code === "string" ? row.code : "unknown";
+  if (code === "confirmation_not_found" || code === "already_reversed" || code === "correction_window_closed") {
+    return { ok: false, code };
+  }
+  return { ok: false, code: "unknown" };
+}

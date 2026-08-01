@@ -110,6 +110,8 @@ function parseOccurrence(raw: unknown): SnapshotOccurrence | null {
       o.routine_exception_owner_overridden === undefined
         ? undefined
         : asBoolean(o.routine_exception_owner_overridden) ?? undefined,
+    planning_revision_id:
+      o.planning_revision_id === undefined ? undefined : asString(o.planning_revision_id),
   };
 }
 

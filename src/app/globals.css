@@ -1047,6 +1047,25 @@ body:has(.pwa-update-banner) main {
   border-top: 1px solid var(--color-border);
 }
 
+[data-event-edit-form] {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+[data-event-edit-form] label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+[data-event-edit-form] label.event-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .occurrence-sheet__content h3 {
   margin: 0 0 0.45rem;
   font-size: 0.95rem;

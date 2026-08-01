@@ -73,3 +73,6 @@ export function normalizeOneOffEventCreate(
     },
   };
 }
+
+/** Future planning revisions use the same field contract as creation. */
+export const normalizeOneOffEventEdit = normalizeOneOffEventCreate;
