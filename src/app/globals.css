@@ -736,14 +736,14 @@ body:has(.pwa-update-banner) main {
 .agenda__section-heading h3 {
   margin: 0;
   color: var(--color-brand-strong);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .agenda__section-heading span {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -869,7 +869,7 @@ body:has(.pwa-update-banner) main {
 .occurrence__target,
 .occurrence__status,
 .occurrence__owner {
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   opacity: 0.85;
 }
 
@@ -918,7 +918,7 @@ body:has(.pwa-update-banner) main {
 
 .occurrence__persisting {
   color: var(--color-persisted);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -934,7 +934,7 @@ body:has(.pwa-update-banner) main {
   width: 100%;
   margin: 0;
   color: var(--color-attention);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 
@@ -1011,7 +1011,7 @@ body:has(.pwa-update-banner) main {
 .occurrence-sheet__eyebrow {
   margin: 0 0 0.25rem;
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 750;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1073,7 +1073,7 @@ body:has(.pwa-update-banner) main {
 
 .occurrence-sheet__facts strong {
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
