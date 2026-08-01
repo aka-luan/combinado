@@ -33,9 +33,13 @@ export function AdultsSettings({ client }: { client: SupabaseClient }) {
       <p>Os dois Adultos têm as mesmas permissões e veem o mesmo Registro.</p>
       {error ? <p data-adults-error>{error}</p> : null}
       <h3>Ativos</h3>
-      <ul data-adults-active>
-        {active.map((member) => <li key={member.user_id}>{member.display_name}</li>)}
-      </ul>
+      {active.length === 0 ? (
+        <p data-adults-active-empty>Nenhum Adulto ativo encontrado.</p>
+      ) : (
+        <ul data-adults-active>
+          {active.map((member) => <li key={member.user_id}>{member.display_name}</li>)}
+        </ul>
+      )}
       {archived.length > 0 ? (
         <>
           <h3>Arquivados</h3>

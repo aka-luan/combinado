@@ -82,7 +82,7 @@ test.describe("authenticated household shell", () => {
     "Hosted authenticated UI credentials are required for this smoke test",
   );
 
-  test("second Adult lands on Hoje and sees the complete settings catalog", async ({ page }) => {
+  test("second Adult lands on Hoje and navigates the focused settings catalog", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Usar senha temporária" }).click();
     await page.getByLabel("E-mail").fill(process.env.TEST_LOGIN_USERNAME!);
@@ -91,17 +91,96 @@ test.describe("authenticated household shell", () => {
 
     await expect(page.locator('[data-today-primary="true"]')).toBeVisible();
     await page.getByRole("button", { name: "Configurações" }).click();
-    await expect(page.locator("[data-ops-status]")).toBeVisible();
+    await expect(page.locator("[data-settings-index]")).toBeVisible();
+    await expect(page.locator("[data-settings-index] h2")).toBeFocused();
+    await expect(page.locator("[data-adults-settings]")).toHaveCount(0);
+    await page.getByRole("button", { name: "Adultos" }).click();
     await expect(page.locator("[data-adults-settings]")).toBeVisible();
-    await expect(page.locator("[data-children-settings]")).toBeVisible();
-    await expect(page.locator("[data-routines-settings]")).toBeVisible();
-    await expect(page.locator("[data-medications-settings]")).toBeVisible();
-    await expect(page.locator("[data-events-settings]")).toBeVisible();
-    await expect(page.locator("[data-push-settings]")).toBeVisible();
+    await expect(page.locator("[data-settings-focused] h2")).toBeFocused();
+    await expect(page.locator("[data-adults-settings]")).toContainText("mesmas permissões");
+    await expect(page.locator("[data-children-settings]")).toHaveCount(0);
+    await page.evaluate(() => window.history.back());
+    await expect(page.locator("[data-settings-index]")).toBeVisible();
+    await expect(page.locator("[data-settings-index] h2")).toBeFocused();
+    await page.evaluate(() => window.history.back());
+    await expect(page.locator("[data-settings-content]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Configurações" })).toBeFocused();
+    await page.getByRole("button", { name: "Configurações" }).click();
+    await page.getByRole("button", { name: "Estado da Casa" }).click();
+    await expect(page.locator("[data-ops-status]")).toBeVisible();
     await expect(page.locator("[data-household-information]")).toBeVisible();
+    await expect(page.locator("[data-backup-status]")).toHaveCount(0);
+    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.getByRole("button", { name: "Crianças" }).click();
+    await expect(page.locator("[data-children-settings]")).toBeVisible();
+    await expect(page.locator("[data-routines-settings]")).toHaveCount(0);
+    await expect(page.getByLabel("Nome da Criança")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Salvar", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.getByRole("button", { name: "Rotinas semanais" }).click();
+    await expect(page.locator("[data-routines-settings]")).toBeVisible();
+    await expect(page.locator("[data-medications-settings]")).toHaveCount(0);
+    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.getByRole("button", { name: "Medicamentos" }).click();
+    await expect(page.locator("[data-medications-settings]")).toBeVisible();
+    await expect(page.locator("[data-events-settings]")).toHaveCount(0);
+    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.getByRole("button", { name: "Eventos avulsos" }).click();
+    await expect(page.locator("[data-events-settings]")).toBeVisible();
+    await expect(page.locator("[data-push-settings]")).toHaveCount(0);
+    await page.getByRole("button", { name: "Voltar" }).click();
+    await page.getByRole("button", { name: "Notificações" }).click();
+    await expect(page.locator("[data-push-settings]")).toBeVisible();
+    await page.getByRole("button", { name: "Voltar" }).click();
+
+    await page.getByRole("button", { name: "Medicamentos" }).click();
+    await expect(page.locator("[data-medication-slots]")).toBeVisible();
+    await expect(page.locator("[data-medication-slots] input[type=time]")).toHaveCount(1);
+    await page.getByRole("button", { name: "Adicionar horário" }).click();
+    await expect(page.locator("[data-medication-slots] input[type=time]")).toHaveCount(2);
+    await page.getByRole("button", { name: "Voltar" }).click();
+
+    await page.evaluate(async (userId) => {
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open("combinado-agenda", 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains("snapshots")) {
+            request.result.createObjectStore("snapshots", { keyPath: "userId" });
+          }
+        };
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction("snapshots", "readwrite");
+          transaction.objectStore("snapshots").put({ userId });
+          transaction.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          transaction.onerror = () => reject(transaction.error);
+        };
+      });
+    }, "00000000-0000-4000-8000-000000000052");
 
     await page.getByRole("button", { name: "Sair" }).click();
     await page.getByRole("button", { name: "Confirmar saída" }).click();
     await expect(page.locator('[data-login-step="email"]')).toBeVisible();
+    const cachedAfterLogout = await page.evaluate(async (userId) => {
+      return await new Promise<unknown>((resolve, reject) => {
+        const request = indexedDB.open("combinado-agenda", 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction("snapshots", "readonly");
+          const read = transaction.objectStore("snapshots").get(userId);
+          read.onsuccess = () => {
+            db.close();
+            resolve(read.result ?? null);
+          };
+          read.onerror = () => reject(read.error);
+        };
+      });
+    }, "00000000-0000-4000-8000-000000000052");
+    expect(cachedAfterLogout).toBeNull();
   });
 });
