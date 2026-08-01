@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { resolveGateView } from "@/lib/auth/gate-view";
+import { mapAuthError } from "@/lib/auth/errors";
 import { LoginFlow } from "./LoginFlow";
 import { Brand } from "@/components/shell/Brand";
 import { ConnectivityNotice } from "@/app/connectivity-notice";
@@ -25,20 +26,28 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => getSupabaseBrowserClient());
   const [status, setStatus] = useState<"loading" | "ready">(client ? "loading" : "ready");
   const [session, setSession] = useState<Session | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!client) return;
     let active = true;
 
-    client.auth.getSession().then(({ data }) => {
+    client.auth.getSession().then(({ data, error }) => {
       if (!active) return;
       setSession(data.session);
+      setSessionError(error ? mapAuthError(error) : null);
+      setStatus("ready");
+    }).catch(() => {
+      if (!active) return;
+      setSession(null);
+      setSessionError(mapAuthError(null));
       setStatus("ready");
     });
 
     const { data: subscription } = client.auth.onAuthStateChange((_event, newSession) => {
       if (!active) return;
       setSession(newSession);
+      setSessionError(null);
       setStatus("ready");
     });
 
@@ -74,7 +83,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     case "login":
       return (
         <PublicShell>
-          <LoginFlow client={client} />
+          <LoginFlow client={client} initialError={sessionError} />
         </PublicShell>
       );
     case "authenticated":

@@ -8,6 +8,12 @@ test("maps rate limit / too many requests to a resend-cooldown message", () => {
   assert.doesNotMatch(message, /rate.?limit/i);
 });
 
+test("accepts the Auth API error_code field without exposing it", () => {
+  const message = mapAuthError({ status: 429, error_code: "over_email_send_rate_limit" });
+  assert.match(message, /aguarde/i);
+  assert.doesNotMatch(message, /rate.?limit/i);
+});
+
 test("maps an unknown or unauthorized email to a generic message, never confirming the account state", () => {
   const message = mapAuthError({ status: 400, code: "otp_disabled" });
   assert.doesNotMatch(message, /não existe|not found|unknown user|signups not allowed/i);

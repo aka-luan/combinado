@@ -31,7 +31,7 @@ function fakeJwt(payload: Record<string, unknown>): string {
 
 async function openAuthenticatedShell(
   page: Page,
-  options: { agenda?: "none" | "ready" | "error" } = {},
+  options: { agenda?: "none" | "ready" | "error" | "setup" } = {},
 ) {
   test.skip(!supabaseUrl, "Build-time Supabase URL is required for the authenticated shell");
 
@@ -72,8 +72,77 @@ async function openAuthenticatedShell(
   let snapshotRequests = 0;
   let snapshotGate: Promise<void> | null = null;
   let releaseSnapshotGate: (() => void) | null = null;
+  let setupChildCreated = false;
+  let setupRoutineCreated = false;
   await page.route(`${supabaseUrl}/rest/v1/**`, async (route) => {
     const url = route.request().url();
+    if (options.agenda === "setup" && route.request().method() === "POST" && url.includes("/children")) {
+      setupChildCreated = true;
+      await route.fulfill({
+        json: {
+          active_from: "2026-08-01",
+          archived_at: null,
+          created_at: "2026-08-01T12:00:00.000Z",
+          household_id: "00000000-0000-4000-8000-000000000051",
+          id: "00000000-0000-4000-8000-000000000053",
+          name: "Nina",
+          updated_at: "2026-08-01T12:00:00.000Z",
+        },
+      });
+      return;
+    }
+    if (options.agenda === "setup" && url.includes("/children?")) {
+      await route.fulfill({
+        json: setupChildCreated
+          ? [
+              {
+                active_from: "2026-08-01",
+                archived_at: null,
+                created_at: "2026-08-01T12:00:00.000Z",
+                household_id: "00000000-0000-4000-8000-000000000051",
+                id: "00000000-0000-4000-8000-000000000053",
+                name: "Nina",
+                updated_at: "2026-08-01T12:00:00.000Z",
+              },
+            ]
+          : [],
+      });
+      return;
+    }
+    if (options.agenda === "setup" && url.includes("/rpc/create_weekly_routine")) {
+      setupRoutineCreated = true;
+      await route.fulfill({ json: "00000000-0000-4000-8000-000000000054" });
+      return;
+    }
+    if (options.agenda === "setup" && url.includes("/weekly_routines?")) {
+      await route.fulfill({
+        json: setupRoutineCreated
+          ? [
+              {
+                id: "00000000-0000-4000-8000-000000000054",
+                weekly_routine_versions: [
+                  {
+                    archived: false,
+                    child_id: "00000000-0000-4000-8000-000000000053",
+                    created_at: "2026-08-01T12:00:00.000Z",
+                    default_owner_user_id: null,
+                    effective_from: "2026-08-01",
+                    id: "00000000-0000-4000-8000-000000000055",
+                    requires_confirmation: true,
+                    scheduled_time: "08:00",
+                    target_kind: "child",
+                    title: "Rotina de teste",
+                    valid_from: "2026-08-01",
+                    valid_until: null,
+                    weekdays: [1, 2, 3, 4, 5],
+                  },
+                ],
+              },
+            ]
+          : [],
+      });
+      return;
+    }
     if (options.agenda && url.includes("/rpc/current_household_id")) {
       await route.fulfill({ json: "00000000-0000-4000-8000-000000000051" });
       return;
@@ -89,6 +158,33 @@ async function openAuthenticatedShell(
             id: "00000000-0000-4000-8000-000000000053",
             name: "Nina",
             updated_at: "2026-08-01T12:00:00.000Z",
+          },
+        ],
+      });
+      return;
+    }
+    if ((options.agenda === "ready" || options.agenda === "error") && url.includes("/weekly_routines?")) {
+      await route.fulfill({
+        json: [
+          {
+            id: "00000000-0000-4000-8000-000000000054",
+            weekly_routine_versions: [
+              {
+                archived: false,
+                child_id: "00000000-0000-4000-8000-000000000053",
+                created_at: "2026-08-01T12:00:00.000Z",
+                default_owner_user_id: null,
+                effective_from: "2026-08-01",
+                id: "00000000-0000-4000-8000-000000000055",
+                requires_confirmation: true,
+                scheduled_time: "08:00",
+                target_kind: "child",
+                title: "Rotina de teste",
+                valid_from: "2026-08-01",
+                valid_until: null,
+                weekdays: [1, 2, 3, 4, 5],
+              },
+            ],
           },
         ],
       });
@@ -131,6 +227,25 @@ async function openAuthenticatedShell(
   };
 }
 
+async function openLogin(page: Page, options: { otpError?: boolean } = {}) {
+  test.skip(!supabaseUrl, "Build-time Supabase URL is required for the login flow");
+  await page.route(`${supabaseUrl}/auth/v1/**`, async (route) => {
+    if (route.request().url().includes("/otp")) {
+      if (options.otpError) {
+        await route.fulfill({
+          status: 429,
+          json: { error_code: "over_email_send_rate_limit", message: "rate limited" },
+        });
+        return;
+      }
+      await route.fulfill({ status: 200, json: {} });
+      return;
+    }
+    await route.fulfill({ status: 200, json: {} });
+  });
+  await page.goto("/");
+}
+
 test.describe("authenticated mobile shell", () => {
   // Keep mocked Supabase requests routable after reconnect; WebKit bypasses
   // Playwright routes for requests controlled by a service worker.
@@ -145,6 +260,44 @@ test.describe("authenticated mobile shell", () => {
     await expect(shell.getByText("Privado", { exact: true })).toBeVisible();
     await expect(shell.getByRole("heading", { name: "Hoje", level: 1 })).toBeVisible();
     await expect(shell.getByRole("button", { name: "Configurações" })).toBeVisible();
+  });
+
+  test("allows correcting the OTP e-mail without reloading and names pending states", async ({ page }) => {
+    await openLogin(page);
+    await page.getByLabel("E-mail").fill("adulto@exemplo.com");
+    await page.getByRole("button", { name: "Continuar com e-mail" }).click();
+    await expect(page.locator('[data-login-step="code"]')).toBeVisible();
+    await expect(page.locator('[data-login-step="code"]')).toContainText("autorizado");
+    await page.getByRole("button", { name: "Corrigir e-mail" }).click();
+    await expect(page.locator('[data-login-step="email"]')).toBeVisible();
+    await expect(page.getByLabel("E-mail")).toHaveValue("adulto@exemplo.com");
+  });
+
+  test("shows a generic authentication error without exposing provider details", async ({ page }) => {
+    await openLogin(page, { otpError: true });
+    await page.getByLabel("E-mail").fill("adulto@exemplo.com");
+    await page.getByRole("button", { name: "Continuar com e-mail" }).click();
+    const error = page.locator('[data-login-step="email"] [role="alert"]');
+    await expect(error).toContainText("Aguarde");
+    await expect(error).not.toContainText("rate limited");
+  });
+
+  test("keeps Hoje behind Criança plus a useful setup until the final CTA", async ({ page }) => {
+    await openAuthenticatedShell(page, { agenda: "setup" });
+    await expect(page.locator('[data-household-home="setup"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Configurar casa" })).toBeVisible();
+
+    await page.getByLabel("Nome da Criança").fill("Nina");
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(page.locator("[data-setup-choice]")).toBeVisible();
+    await page.getByRole("button", { name: "Criar Rotina semanal" }).click();
+    await page.getByLabel("O que precisa ser combinado?").fill("Levar para a escola");
+    await page.getByRole("button", { name: "Salvar Rotina semanal" }).click();
+    await expect(page.locator("[data-setup-finish]")).toBeVisible();
+    await expect(page.locator('[data-agenda]')).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Criar combinado e abrir o Hoje" }).click();
+    await expect(page.locator('[data-agenda="ready"]')).toBeVisible();
   });
 
   test("uses complete light and dark semantic tokens", async ({ page }) => {

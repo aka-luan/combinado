@@ -7,12 +7,41 @@ export type HouseholdGate =
   | { kind: "schema_missing" }
   | { kind: "unavailable" };
 
-export function isHouseholdSetupNeeded(activeChildCount: number): boolean {
-  return activeChildCount === 0;
+export type HouseholdSetupProgress = {
+  activeChildCount: number;
+  activeRoutineCount: number;
+  activeMedicationCount: number;
+};
+
+export function hasUsefulHouseholdSetup(progress: HouseholdSetupProgress): boolean {
+  return (
+    progress.activeChildCount > 0 &&
+    progress.activeRoutineCount + progress.activeMedicationCount > 0
+  );
+}
+
+export function isActiveConfigurationOnDate(
+  validFrom: string,
+  validUntil: string | null,
+  localDate: string,
+): boolean {
+  return validFrom <= localDate && (validUntil === null || validUntil >= localDate);
+}
+
+/**
+ * Keep the one-argument form for callers that only know the old child gate.
+ * New callers pass the count of useful routine/medication configurations too.
+ */
+export function isHouseholdSetupNeeded(
+  activeChildCount: number,
+  usefulConfigurationCount?: number,
+): boolean {
+  if (activeChildCount === 0) return true;
+  return usefulConfigurationCount === undefined ? false : usefulConfigurationCount === 0;
 }
 
 export function setupHomeCopy(): string {
-  return "Configurar casa — cadastre uma criança e uma rotina semanal em Configurações, depois volte para Hoje.";
+  return "Configurar casa — adicione uma Criança e uma Rotina semanal ou Medicamento antes de abrir o Hoje.";
 }
 
 /** Shown when the Adult is authenticated but not linked to the singleton Casa. */
