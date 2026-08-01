@@ -89,6 +89,17 @@ main:has([data-login-screen]) {
     calc(var(--space-10) + env(safe-area-inset-bottom, 0px));
 }
 
+main:has([data-login-screen]) [data-app-env],
+main:has([data-login-screen]) [data-offline-notice] {
+  width: min(100%, 480px);
+  margin: 0 auto;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .app-shell-title {
   margin: 0;
 }
