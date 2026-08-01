@@ -78,6 +78,37 @@ function mapRoutineError(message?: string, code?: string): string {
   }
 }
 
+type RoutineField = "title" | "target" | "weekdays" | "time" | "validFrom" | "validUntil";
+
+function routineErrorField(message?: string): RoutineField | null {
+  switch (message) {
+    case "title_required":
+    case "title_too_long":
+    case "Informe um título.":
+    case "O título deve ter até 120 caracteres.":
+      return "title";
+    case "child_required":
+    case "Escolha a criança.":
+      return "target";
+    case "weekdays_required":
+    case "invalid_weekday":
+    case "Escolha ao menos um dia da semana.":
+    case "Escolha dias válidos da semana.":
+      return "weekdays";
+    case "invalid_time":
+    case "Horário inválido (use HH:mm).":
+      return "time";
+    case "valid_from_required":
+    case "Informe a data inicial.":
+      return "validFrom";
+    case "invalid_valid_range":
+    case "Data final deve ser após a inicial.":
+      return "validUntil";
+    default:
+      return null;
+  }
+}
+
 function weekdayLabels(weekdays: number[]): string {
   const map = new Map(WEEKDAYS.map((d) => [d.value, d.label]));
   return weekdays.map((d) => map.get(d) ?? String(d)).join(", ");
@@ -91,6 +122,7 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
   const [pending, setPending] = useState(false);
   const [householdReady, setHouseholdReady] = useState(false);
   const [archiveId, setArchiveId] = useState<string | null>(null);
+  const [restoreId, setRestoreId] = useState<string | null>(null);
 
   const today = localDateInHousehold();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -114,7 +146,13 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
     () => (routines ?? []).filter((routine) => !routine.archived),
     [routines],
   );
-  useInteractionBusy(pending || editingId !== null || archiveId !== null || title.trim().length > 0);
+  useInteractionBusy(
+    pending ||
+      editingId !== null ||
+      archiveId !== null ||
+      restoreId !== null ||
+      title.trim().length > 0,
+  );
   const archivedRoutines = useMemo(
     () => (routines ?? []).filter((routine) => routine.archived),
     [routines],
@@ -252,9 +290,14 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
   }
 
   async function handleRestore(routine: WeeklyRoutineListItem) {
+    if (restoreId !== routine.id) {
+      setRestoreId(routine.id);
+      return;
+    }
     setPending(true);
     setError(null);
     const result = await restoreWeeklyRoutine(client, routine.id, routine.versionId);
+    setRestoreId(null);
     setPending(false);
     if (!result.ok) {
       setError(mapRoutineError(result.error.message, result.error.code));
@@ -268,6 +311,8 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
     return <p data-routines-status="loading">Carregando rotinas…</p>;
   }
 
+  const fieldError = routineErrorField(error ?? undefined);
+
   return (
     <section data-routines-settings>
       <h2>Rotinas semanais</h2>
@@ -277,9 +322,10 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
       {error ? <p data-routines-error>{error}</p> : null}
 
       <form data-routine-create={editingId ? undefined : true} data-routine-edit={editingId ?? undefined} onSubmit={handleSubmit}>
-        <label>
+        <label aria-invalid={fieldError === "title" || undefined}>
           Título
           <input
+            aria-describedby={fieldError === "title" ? "routine-title-error" : undefined}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             autoComplete="off"
@@ -287,11 +333,17 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
             maxLength={OCCURRENCE_TITLE_MAX_LENGTH}
             required
           />
+          {fieldError === "title" ? <span id="routine-title-error" data-field-error>{error}</span> : null}
         </label>
 
-        <label>
+        <label aria-invalid={fieldError === "target" || undefined}>
           Alvo
-          <select value={targetKey} onChange={(event) => setTargetKey(event.target.value)} disabled={pending}>
+          <select
+            value={targetKey}
+            onChange={(event) => setTargetKey(event.target.value)}
+            disabled={pending}
+            aria-describedby={fieldError === "target" ? "routine-target-error" : undefined}
+          >
             {targets.map((target) => (
               <option
                 key={target.kind === "casa" ? "casa" : target.childId}
@@ -301,9 +353,10 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
               </option>
             ))}
           </select>
+          {fieldError === "target" ? <span id="routine-target-error" data-field-error>{error}</span> : null}
         </label>
 
-        <fieldset data-routine-weekdays>
+        <fieldset data-routine-weekdays aria-invalid={fieldError === "weekdays" || undefined}>
           <legend>Dias da semana</legend>
           {WEEKDAYS.map((day) => (
             <label key={day.value}>
@@ -316,16 +369,19 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
               {day.label}
             </label>
           ))}
+          {fieldError === "weekdays" ? <span id="routine-weekdays-error" data-field-error>{error}</span> : null}
         </fieldset>
 
-        <label>
+        <label aria-invalid={fieldError === "time" || undefined}>
           Horário
           <input
+            aria-describedby={fieldError === "time" ? "routine-time-error" : undefined}
             type="time"
             value={scheduledTime}
             onChange={(event) => setScheduledTime(event.target.value)}
             disabled={pending}
           />
+          {fieldError === "time" ? <span id="routine-time-error" data-field-error>{error}</span> : null}
         </label>
 
         <label>
@@ -358,36 +414,38 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
           </select>
         </label>
 
-        <label>
+        <label aria-invalid={fieldError === "validFrom" || undefined}>
           Data inicial
           <input
+            aria-describedby={fieldError === "validFrom" ? "routine-valid-from-error" : undefined}
             type="date"
             value={validFrom}
             onChange={(event) => setValidFrom(event.target.value)}
             disabled={pending}
             required
           />
+          {fieldError === "validFrom" ? <span id="routine-valid-from-error" data-field-error>{error}</span> : null}
         </label>
 
-        <label>
+        <label aria-invalid={fieldError === "validUntil" || undefined}>
           Data final (opcional)
           <input
+            aria-describedby={fieldError === "validUntil" ? "routine-valid-until-error" : undefined}
             type="date"
             value={validUntil}
             onChange={(event) => setValidUntil(event.target.value)}
             disabled={pending}
           />
+          {fieldError === "validUntil" ? <span id="routine-valid-until-error" data-field-error>{error}</span> : null}
         </label>
 
         <div className="routine-form-actions">
           <button type="submit" disabled={pending || !householdReady}>
-            {editingId ? "Salvar alteração para amanhã" : "Adicionar rotina"}
+            {editingId ? "Salvar alteração para amanhã" : "Salvar rotina"}
           </button>
-          {editingId ? (
-            <button type="button" disabled={pending} onClick={resetForm}>
-              Cancelar edição
-            </button>
-          ) : null}
+          <button type="button" disabled={pending} onClick={resetForm}>
+            Cancelar
+          </button>
         </div>
       </form>
 
@@ -440,9 +498,21 @@ export function RoutinesSettings({ client }: { client: SupabaseClient }) {
           {archivedRoutines.map((routine) => (
             <li key={routine.id} data-routine-id={routine.id} data-routine-archived="true">
               <span>{routine.title} · {weekdayLabels(routine.weekdays)}</span>
-              <button type="button" disabled={pending} onClick={() => void handleRestore(routine)}>
-                Reativar amanhã
-              </button>
+              {restoreId === routine.id ? (
+                <span data-routine-restore-confirm>
+                  <p>Reativar esta Rotina a partir de amanhã?</p>
+                  <button type="button" disabled={pending} onClick={() => void handleRestore(routine)}>
+                    Confirmar reativação
+                  </button>
+                  <button type="button" disabled={pending} onClick={() => setRestoreId(null)}>
+                    Cancelar
+                  </button>
+                </span>
+              ) : (
+                <button type="button" disabled={pending} onClick={() => void handleRestore(routine)}>
+                  Reativar amanhã
+                </button>
+              )}
             </li>
           ))}
         </ul>

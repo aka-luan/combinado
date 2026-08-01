@@ -62,6 +62,38 @@ function mapMedicationError(message?: string, code?: string): string {
   }
 }
 
+type MedicationField = "name" | "child" | "slots" | "validFrom" | "validUntil";
+
+function medicationErrorField(message?: string): MedicationField | null {
+  switch (extractAppErrorToken(message) ?? message) {
+    case "name_required":
+    case "Informe o nome do medicamento.":
+      return "name";
+    case "child_required":
+    case "child_not_in_household":
+    case "Escolha a criança.":
+    case "A criança selecionada não está ativa nesta Casa amanhã.":
+      return "child";
+    case "slots_required":
+    case "duplicate_slots":
+    case "invalid_slot":
+    case "Informe ao menos um horário.":
+    case "Horários iguais não podem se repetir.":
+    case "Horário inválido (use HH:mm).":
+      return "slots";
+    case "valid_from_required":
+    case "Informe a data inicial.":
+      return "validFrom";
+    case "invalid_valid_until":
+    case "invalid_valid_range":
+    case "Data final inválida.":
+    case "Data final deve ser após a inicial.":
+      return "validUntil";
+    default:
+      return null;
+  }
+}
+
 export function MedicationsSettings({ client }: { client: SupabaseClient }) {
   const [medications, setMedications] = useState<MedicationListItem[] | null>(null);
   const [children, setChildren] = useState<ChildRow[]>([]);
@@ -70,13 +102,14 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
   const [householdReady, setHouseholdReady] = useState(false);
   const [interruptConfirmId, setInterruptConfirmId] = useState<string | null>(null);
   const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [restoreConfirmId, setRestoreConfirmId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingVersionId, setEditingVersionId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [childId, setChildId] = useState("");
   const [instruction, setInstruction] = useState("");
-  const [slotsText, setSlotsText] = useState("08:00");
+  const [slots, setSlots] = useState(["08:00"]);
   const [validFrom, setValidFrom] = useState(() => localDateInHousehold());
   const [validUntil, setValidUntil] = useState("");
   useInteractionBusy(
@@ -84,6 +117,7 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
       editingId !== null ||
       interruptConfirmId !== null ||
       archiveConfirmId !== null ||
+      restoreConfirmId !== null ||
       name.trim().length > 0,
   );
 
@@ -152,7 +186,7 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
     setEditingVersionId(null);
     setName("");
     setInstruction("");
-    setSlotsText("08:00");
+    setSlots(["08:00"]);
     setValidUntil("");
     setValidFrom(localDateInHousehold());
   }
@@ -163,7 +197,7 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
     setName(medication.name);
     setChildId(medication.childId);
     setInstruction(medication.instruction ?? "");
-    setSlotsText(medication.slots.join(", "));
+    setSlots(medication.slots.length > 0 ? medication.slots : ["08:00"]);
     setValidFrom(medication.validFrom);
     setValidUntil(medication.validUntil ?? "");
     setError(null);
@@ -173,15 +207,11 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
     event.preventDefault();
     setPending(true);
     setError(null);
-    const slots = slotsText
-      .split(/[,;\s]+/)
-      .map((slot) => slot.trim())
-      .filter(Boolean);
     const input = {
       childId,
       name,
       instruction: instruction.trim() || null,
-      slots,
+      slots: slots.filter((slot) => slot.trim()),
       validFrom,
       validUntil: validUntil.trim() || null,
     };
@@ -231,9 +261,14 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
   }
 
   async function handleRestore(medication: MedicationListItem) {
+    if (restoreConfirmId !== medication.id) {
+      setRestoreConfirmId(medication.id);
+      return;
+    }
     setPending(true);
     setError(null);
     const result = await restoreMedication(client, medication.id, medication.versionId);
+    setRestoreConfirmId(null);
     setPending(false);
     if (!result.ok) {
       setError(mapMedicationError(result.error.message, result.error.code));
@@ -292,15 +327,29 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
             ) : null}
           </span>
         ) : medication.archived ? (
-          <button type="button" disabled={pending} onClick={() => void handleRestore(medication)}>
-            Reativar amanhã
-          </button>
+          restoreConfirmId === medication.id ? (
+            <span data-medication-restore-confirm>
+              <p>Reativar este Medicamento a partir de amanhã?</p>
+              <button type="button" disabled={pending} onClick={() => void handleRestore(medication)}>
+                Confirmar reativação
+              </button>
+              <button type="button" disabled={pending} onClick={() => setRestoreConfirmId(null)}>
+                Cancelar
+              </button>
+            </span>
+          ) : (
+            <button type="button" disabled={pending} onClick={() => void handleRestore(medication)}>
+              Reativar amanhã
+            </button>
+          )
         ) : null}
       </li>
     );
   }
 
   if (medications === null) return <p data-medications-status="loading">Carregando medicamentos…</p>;
+
+  const fieldError = medicationErrorField(error ?? undefined);
 
   return (
     <section data-medications-settings>
@@ -309,37 +358,101 @@ export function MedicationsSettings({ client }: { client: SupabaseClient }) {
       {error && <p data-medications-error>{error}</p>}
 
       <form data-medication-create={editingId ? undefined : true} data-medication-edit={editingId ?? undefined} onSubmit={handleSubmit}>
-        <label>
+        <label aria-invalid={fieldError === "name" || undefined}>
           Nome
-          <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" disabled={pending} required />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            autoComplete="off"
+            disabled={pending}
+            required
+            aria-describedby={fieldError === "name" ? "medication-name-error" : undefined}
+          />
+          {fieldError === "name" ? <span id="medication-name-error" data-field-error>{error}</span> : null}
         </label>
-        <label>
+        <label aria-invalid={fieldError === "child" || undefined}>
           Criança
-          <select value={childId} onChange={(event) => setChildId(event.target.value)} disabled={pending || activeChildren.length === 0} required>
+          <select
+            value={childId}
+            onChange={(event) => setChildId(event.target.value)}
+            disabled={pending || activeChildren.length === 0}
+            required
+            aria-describedby={fieldError === "child" ? "medication-child-error" : undefined}
+          >
             {activeChildren.length === 0 ? <option value="">Cadastre uma criança primeiro</option> : activeChildren.map((child) => <option key={child.id} value={child.id}>{child.name}</option>)}
           </select>
+          {fieldError === "child" ? <span id="medication-child-error" data-field-error>{error}</span> : null}
         </label>
         <label>
           Instrução (opcional)
           <input value={instruction} onChange={(event) => setInstruction(event.target.value)} autoComplete="off" disabled={pending} placeholder="Conforme a prescrição" />
         </label>
-        <label>
-          Horários (HH:mm, separados)
-          <input value={slotsText} onChange={(event) => setSlotsText(event.target.value)} autoComplete="off" disabled={pending} placeholder="08:00, 20:00" required />
-        </label>
-        <label>
+        <fieldset data-medication-slots aria-invalid={fieldError === "slots" || undefined}>
+          <legend>Horários (HH:mm)</legend>
+          {slots.map((slot, index) => (
+            <label key={index}>
+              Horário {index + 1}
+              <span className="medication-slot-row">
+                <input
+                  type="time"
+                  value={slot}
+                  onChange={(event) => {
+                    const next = [...slots];
+                    next[index] = event.target.value;
+                    setSlots(next);
+                  }}
+                  disabled={pending}
+                  required
+                  aria-describedby={fieldError === "slots" ? "medication-slots-error" : undefined}
+                />
+                {slots.length > 1 ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    aria-label={`Remover horário ${index + 1}`}
+                    onClick={() => setSlots(slots.filter((_, valueIndex) => valueIndex !== index))}
+                  >
+                    Remover
+                  </button>
+                ) : null}
+              </span>
+            </label>
+          ))}
+          <button type="button" disabled={pending} onClick={() => setSlots([...slots, "08:00"])}>
+            Adicionar horário
+          </button>
+          {fieldError === "slots" ? <span id="medication-slots-error" data-field-error>{error}</span> : null}
+        </fieldset>
+        <label aria-invalid={fieldError === "validFrom" || undefined}>
           Data inicial
-          <input type="date" value={validFrom} onChange={(event) => setValidFrom(event.target.value)} disabled={pending} required />
+          <input
+            type="date"
+            value={validFrom}
+            onChange={(event) => setValidFrom(event.target.value)}
+            disabled={pending}
+            required
+            aria-describedby={fieldError === "validFrom" ? "medication-valid-from-error" : undefined}
+          />
+          {fieldError === "validFrom" ? <span id="medication-valid-from-error" data-field-error>{error}</span> : null}
         </label>
-        <label>
+        <label aria-invalid={fieldError === "validUntil" || undefined}>
           Data final (opcional)
-          <input type="date" value={validUntil} onChange={(event) => setValidUntil(event.target.value)} disabled={pending} />
+          <input
+            type="date"
+            value={validUntil}
+            onChange={(event) => setValidUntil(event.target.value)}
+            disabled={pending}
+            aria-describedby={fieldError === "validUntil" ? "medication-valid-until-error" : undefined}
+          />
+          {fieldError === "validUntil" ? <span id="medication-valid-until-error" data-field-error>{error}</span> : null}
         </label>
         <div className="medication-form-actions">
           <button type="submit" disabled={pending || !householdReady || activeChildren.length === 0}>
-            {editingId ? "Salvar alteração para amanhã" : "Adicionar medicamento"}
+            {editingId ? "Salvar alteração para amanhã" : "Salvar medicamento"}
           </button>
-          {editingId ? <button type="button" disabled={pending} onClick={resetForm}>Cancelar edição</button> : null}
+          <button type="button" disabled={pending} onClick={resetForm}>
+            Cancelar
+          </button>
         </div>
       </form>
 
