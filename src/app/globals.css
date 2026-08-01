@@ -140,6 +140,119 @@ body:has(.pwa-update-banner) main {
   font-weight: 700;
 }
 
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 auto;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: clamp(1rem, 5vw, 1.5rem);
+  background: var(--color-surface);
+  box-shadow: 0 0.75rem 2rem color-mix(in srgb, var(--color-brand-strong) 10%, transparent);
+}
+
+.login-card h1,
+.login-card p {
+  margin: 0;
+}
+
+.login-card h1 {
+  color: var(--color-brand-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 9vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.login-card__eyebrow,
+.household-setup__eyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.login-card__privacy,
+.login-card__hint {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.login-card label,
+.household-setup label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.login-card input,
+.household-setup input,
+.household-setup select {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.login-card input:focus-visible,
+.household-setup input:focus-visible,
+.household-setup select:focus-visible {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-focus) 22%, transparent);
+}
+
+.login-card button,
+.household-setup button {
+  border: 1px solid var(--color-brand-strong);
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  background: var(--color-brand-strong);
+  color: var(--color-on-brand);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.login-card button:disabled,
+.household-setup button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.login-card__secondary,
+.login-card__email {
+  border-color: var(--color-border) !important;
+  background: transparent !important;
+  color: var(--color-brand-strong) !important;
+}
+
+.login-card__email {
+  align-self: flex-start;
+  min-height: 44px;
+  padding-inline: 0.25rem !important;
+  border-color: transparent !important;
+  text-decoration: underline;
+}
+
+.login-card__pending {
+  color: var(--color-persisted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.login-card__error {
+  color: var(--color-error);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
 .authenticated-shell {
   --shell-inline: clamp(1rem, 5vw, 2rem);
   width: min(100%, 72rem);
@@ -431,8 +544,124 @@ body:has(.pwa-update-banner) main {
   opacity: 0.9;
 }
 
-[data-household-home="setup"] {
-  font-size: 1rem;
+.household-setup {
+  width: min(100%, 32rem);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: clamp(1rem, 5vw, 1.5rem);
+  background: var(--color-surface);
+}
+
+.household-setup h2,
+.household-setup h3,
+.household-setup p {
+  margin: 0;
+}
+
+.household-setup h2 {
+  margin-top: 0.25rem;
+  color: var(--color-brand-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 9vw, 2.75rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.household-setup > p:not(.household-setup__eyebrow):not(.household-setup__progress),
+.household-setup__finish p,
+.household-setup__form p {
+  margin-top: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.household-setup__progress {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.75rem !important;
+  color: var(--color-persisted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.household-setup__progress-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.household-setup__progress[data-setup-progress-state="pending"] {
+  color: var(--color-attention);
+}
+
+.household-setup__error {
+  margin-top: 0.85rem !important;
+  color: var(--color-error);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.household-setup__form,
+.household-setup__choice,
+.household-setup__finish {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+}
+
+.household-setup__form h3,
+.household-setup__choice h3,
+.household-setup__finish h3 {
+  font-size: 1.1rem;
+}
+
+.household-setup__form-actions,
+.household-setup__choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.household-setup__choice-actions button,
+.household-setup__form-actions button:last-child {
+  border-color: var(--color-border);
+  background: transparent;
+  color: var(--color-brand-strong);
+}
+
+.household-setup__weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.55rem;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.household-setup__weekdays legend {
+  width: 100%;
+  margin-bottom: 0.1rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.household-setup__weekdays label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.household-setup__weekdays input {
+  width: 44px;
 }
 
 [data-agenda] {

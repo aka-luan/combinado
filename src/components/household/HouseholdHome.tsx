@@ -1,29 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AgendaHome } from "@/components/agenda/AgendaHome";
+import { HouseholdSetupFlow } from "@/components/household/HouseholdSetupFlow";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
-import { fetchCurrentHouseholdId, listChildren } from "@/lib/household/children";
+import {
+  fetchCurrentHouseholdId,
+  listChildren,
+  type ChildRow,
+} from "@/lib/household/children";
 import { HOUSEHOLD_CHANGED_EVENT } from "@/lib/household/events";
 import { partitionChildren } from "@/lib/household/partition";
+import { listMedications } from "@/lib/household/medications";
+import { listWeeklyRoutines } from "@/lib/household/routines";
+import { localDateInHousehold } from "@/lib/household/routine-form";
 import {
-  isHouseholdSetupNeeded,
+  hasUsefulHouseholdSetup,
+  isActiveConfigurationOnDate,
   isSchemaMissingError,
   membershipMissingCopy,
   schemaMissingCopy,
-  setupHomeCopy,
-  type HouseholdGate,
+  type HouseholdSetupProgress,
 } from "@/lib/household/setup-home";
+
+type HouseholdGate =
+  | { kind: "loading" }
+  | { kind: "ready" }
+  | { kind: "setup"; children: ChildRow[]; progress: HouseholdSetupProgress }
+  | { kind: "membership_missing" }
+  | { kind: "schema_missing" }
+  | { kind: "unavailable" };
 
 /**
  * When the household has no active children, Hoje shows the setup cue (PRD §12.1 / issue #16).
  * Membership/schema gaps get distinct copy — they are not the child+routine path.
  */
 export function HouseholdHome() {
+  const [client] = useState(() => getSupabaseBrowserClient());
   const [gate, setGate] = useState<HouseholdGate | { kind: "loading" }>({ kind: "loading" });
+  const onboardingLocked = useRef(false);
 
   const refresh = useCallback(async () => {
-    const client = getSupabaseBrowserClient();
     if (!client) {
       setGate({ kind: "unavailable" });
       return;
@@ -53,8 +70,75 @@ export function HouseholdHome() {
       return;
     }
     const { active } = partitionChildren(result.data);
-    setGate(isHouseholdSetupNeeded(active.length) ? { kind: "setup_children" } : { kind: "ready" });
-  }, []);
+    if (active.length === 0) {
+      onboardingLocked.current = true;
+      setGate({
+        kind: "setup",
+        children: active,
+        progress: { activeChildCount: 0, activeRoutineCount: 0, activeMedicationCount: 0 },
+      });
+      return;
+    }
+
+    const [routines, medications] = await Promise.all([
+      listWeeklyRoutines(client),
+      listMedications(client),
+    ]);
+    const localDate = localDateInHousehold();
+    const activeChildIds = new Set(active.map((child) => child.id));
+    const progress: HouseholdSetupProgress = {
+      activeChildCount: active.length,
+      activeRoutineCount: routines.ok
+        ? routines.data.filter(
+            (routine) =>
+              !routine.archived &&
+              isActiveConfigurationOnDate(routine.validFrom, routine.validUntil, localDate) &&
+              (routine.targetKind === "casa" ||
+                (routine.childId !== null && activeChildIds.has(routine.childId))),
+          ).length
+        : 0,
+      activeMedicationCount: medications.ok
+        ? medications.data.filter(
+            (medication) =>
+              !medication.archived &&
+              !medication.interruptedAt &&
+              activeChildIds.has(medication.childId) &&
+              isActiveConfigurationOnDate(medication.validFrom, medication.validUntil, localDate),
+          ).length
+        : 0,
+    };
+
+    if (hasUsefulHouseholdSetup(progress)) {
+      if (onboardingLocked.current) {
+        setGate({ kind: "setup", children: active, progress });
+      } else {
+        setGate({ kind: "ready" });
+      }
+      return;
+    }
+
+    const failedResult = !routines.ok ? routines : !medications.ok ? medications : null;
+    if (failedResult) {
+      setGate(
+        isSchemaMissingError(failedResult.error.code, failedResult.error.message)
+          ? { kind: "schema_missing" }
+          : { kind: "unavailable" },
+      );
+      return;
+    }
+
+    onboardingLocked.current = true;
+    setGate({
+      kind: "setup",
+      children: active,
+      progress,
+    });
+  }, [client]);
+
+  const openToday = useCallback(async () => {
+    onboardingLocked.current = false;
+    await refresh();
+  }, [refresh]);
 
   useEffect(() => {
     void refresh();
@@ -69,7 +153,7 @@ export function HouseholdHome() {
     return <p data-household-home="loading">Carregando a Casa…</p>;
   }
 
-  if (gate.kind === "unavailable") {
+  if (!client || gate.kind === "unavailable") {
     return null;
   }
 
@@ -89,8 +173,17 @@ export function HouseholdHome() {
     );
   }
 
-  if (gate.kind === "setup_children") {
-    return <p data-household-home="setup">{setupHomeCopy()}</p>;
+  if (gate.kind === "setup") {
+    return (
+      <div data-household-home="setup">
+        <HouseholdSetupFlow
+          client={client}
+          activeChildren={gate.children}
+          progress={gate.progress}
+          onOpenToday={openToday}
+        />
+      </div>
+    );
   }
 
   return (

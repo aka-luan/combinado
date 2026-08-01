@@ -11,14 +11,15 @@ const MESSAGES_BY_CODE: Record<string, string> = {
 
 function readCode(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null) return undefined;
-  const code = (error as { code?: unknown }).code;
+  const value = error as { code?: unknown; error_code?: unknown };
+  const code = value.code ?? value.error_code;
   return typeof code === "string" ? code : undefined;
 }
 
 /**
  * Maps a Supabase Auth error into a fixed, user-facing message. Only the
- * error `code` is ever inspected — the raw `message`/`status` from the
- * provider is never surfaced, since it can echo back SMTP/account details.
+ * provider error-code fields are ever inspected — the raw `message`/`status`
+ * is never surfaced, since it can echo back SMTP/account details.
  */
 export function mapAuthError(error: unknown): string {
   const code = readCode(error);
