@@ -39,4 +39,3 @@ produto, nos testes e nas decisões de design.
   dia seguinte.
 - **Sem Responsável:** condição explícita de uma Ocorrência confirmável sem
   Adulto planejado; é um alerta e nunca depende apenas de cor.
-

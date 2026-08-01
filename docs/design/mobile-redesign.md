@@ -1,8 +1,8 @@
 # Contrato de redesign mobile do Combinado
 
-**Status:** aprovado para handoff de implementação em 01/08/2026  
-**Referência principal:** viewport de 390×844; validar também um iPhone menor  
-**Escopo:** PWA instalada, somente superfícies mobile  
+**Status:** aprovado para handoff de implementação em 01/08/2026
+**Referência principal:** viewport de 390×844; validar também um iPhone menor
+**Escopo:** PWA instalada, somente superfícies mobile
 **Fonte de comportamento:** `PRD.md` e as emendas registradas na seção 9
 
 Este documento é o contrato de implementação do redesign aprovado no mapa
@@ -444,7 +444,7 @@ abaixo são as únicas emendas comportamentais deste contrato.
 
 ### Emenda P1 — conclusão de Rotina confirmável
 
-**Seção:** PRD §8.3 — Conclusão  
+**Seção:** PRD §8.3 — Conclusão
 **Ação:** acrescentar antes da lista de regras:
 
 > Toda Ocorrência confirmável — incluindo Dose, Evento avulso e Rotina
@@ -458,7 +458,7 @@ de uma interpretação da origem da Ocorrência.
 
 ### Emenda P2 — gate de configuração inicial
 
-**Seção:** PRD §12.1 — Primeiro adulto  
+**Seção:** PRD §12.1 — Primeiro adulto
 **Ação:** substituir o fluxo mínimo por:
 
 > Sem dados úteis, Hoje mostra `Configurar casa`. O fluxo focado exige:
@@ -476,7 +476,7 @@ admite Medicamento como configuração útil.
 
 ### Emenda P3 — revisão de Evento avulso futuro
 
-**Seção:** PRD §7.2 — Amanhã  
+**Seção:** PRD §7.2 — Amanhã
 **Ação:** após `editar ou cancelar evento avulso`, acrescentar:
 
 > Editar um Evento avulso futuro e não concluído abre o formulário focado e
@@ -487,7 +487,7 @@ admite Medicamento como configuração útil.
 > concluído não é editado diretamente; sua correção usa o fluxo de conclusão do
 > §8.3.
 
-**Seção:** PRD §8.7 — Evento avulso  
+**Seção:** PRD §8.7 — Evento avulso
 **Ação:** acrescentar ao fim:
 
 > Eventos futuros não concluídos podem receber revisões de planejamento
