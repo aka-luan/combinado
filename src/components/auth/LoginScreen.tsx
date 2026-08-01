@@ -40,8 +40,7 @@ export function LoginScreen({ client }: { client: SupabaseClient }) {
       </figure>
 
       <ReassuranceCard icon={<IconShieldCheck />} title="Segurança e privacidade">
-        O Registro fica na nuvem da Casa, sincronizado entre os dois Adultos.
-        Neste aparelho há só um cache de leitura offline.
+        O Registro fica na nuvem da Casa; neste aparelho há só um cache offline.
       </ReassuranceCard>
     </div>
   );

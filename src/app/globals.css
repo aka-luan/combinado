@@ -79,25 +79,35 @@ main {
   gap: 0.75rem;
 }
 
-/* Branded login: cream canvas, top-aligned single column */
+/* Branded login: cream canvas, dense single-screen column (~390×844) */
 main:has([data-login-screen]) {
+  position: relative;
   justify-content: flex-start;
   text-align: left;
   background: var(--background-app);
   color: var(--text-primary);
-  padding: calc(var(--space-6) + env(safe-area-inset-top, 0px)) var(--space-6)
-    calc(var(--space-10) + env(safe-area-inset-bottom, 0px));
+  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-5)
+    calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  gap: var(--space-2);
 }
 
+/* Keep chrome out of the vertical budget so the stack can fit without scroll */
 main:has([data-login-screen]) [data-app-env],
 main:has([data-login-screen]) [data-offline-notice] {
+  position: absolute;
+  top: calc(var(--space-1) + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   width: min(100%, 480px);
-  margin: 0 auto;
-  font-size: 0.75rem;
+  margin: 0;
+  font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--text-secondary);
   text-align: center;
+  opacity: 0.75;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .app-shell-title {
@@ -111,14 +121,14 @@ main:has([data-login-screen]) [data-offline-notice] {
   margin-inline: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-3);
   animation: login-enter var(--motion-fast) var(--ease-calm) both;
 }
 
 @keyframes login-enter {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -131,22 +141,24 @@ main:has([data-login-screen]) [data-offline-notice] {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--space-3);
-  padding-top: var(--space-4);
+  gap: var(--space-1);
+  padding-top: var(--space-5);
 }
 
 .login-screen__brand--compact {
-  padding-top: var(--space-8);
+  padding-top: var(--space-6);
 }
 
 .login-screen__mark {
-  margin-bottom: var(--space-2);
+  width: 48px;
+  height: auto;
+  margin-bottom: 0;
 }
 
 .login-screen__wordmark {
   margin: 0;
   font-family: var(--font-display), Georgia, "Times New Roman", serif;
-  font-size: clamp(2.75rem, 8vw, 3.5rem);
+  font-size: clamp(2.25rem, 7vw, 2.75rem);
   font-weight: 600;
   line-height: 1;
   color: var(--brand-primary-strong);
@@ -155,18 +167,18 @@ main:has([data-login-screen]) [data-offline-notice] {
 
 .login-screen__tagline {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
   font-weight: 500;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 
 .login-screen__promise {
-  margin: var(--space-4) 0 0;
-  max-width: 22rem;
-  font-size: 1.125rem;
-  line-height: 1.45;
+  margin: var(--space-2) 0 0;
+  max-width: 20rem;
+  font-size: 0.9375rem;
+  line-height: 1.35;
   color: var(--text-primary);
 }
 
@@ -183,9 +195,9 @@ main:has([data-login-screen]) [data-offline-notice] {
 .login-screen__divider {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   color: var(--text-secondary);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
@@ -201,67 +213,79 @@ main:has([data-login-screen]) [data-offline-notice] {
   flex-shrink: 0;
 }
 
-/* Empty 16:9 slot — raster wired later */
+/* Compact atmospheric band — raster wired later (full 16:9 is too tall for one screen) */
 .login-screen__illustration {
   margin: 0;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: clamp(4.75rem, 12vh, 6.5rem);
   border-radius: var(--radius-md);
   background:
     linear-gradient(180deg, var(--color-cream-100) 0%, var(--color-cream-200) 100%);
   box-shadow: inset 0 0 0 1px rgba(69, 58, 41, 0.04);
 }
 
+.login-screen__illustration img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
 .reassurance-card {
   display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
-  padding: var(--space-5);
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--background-soft);
-  box-shadow: var(--shadow-card);
 }
 
 .reassurance-card__icon {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-sm);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: var(--background-muted);
   color: var(--icon-primary);
 }
 
+.reassurance-card__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .reassurance-card__title {
-  margin: 0 0 var(--space-1);
-  font-size: 1.0625rem;
+  margin: 0;
+  font-size: 0.9375rem;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.25;
   color: var(--text-primary);
 }
 
 .reassurance-card__copy {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.45;
+  margin: 0.1rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
   color: var(--text-secondary);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   text-align: left;
 }
 
 .login-form__heading {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .login-form__heading h2 {
-  margin: 0 0 var(--space-2);
-  font-size: 1.375rem;
+  margin: 0 0 var(--space-1);
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.2;
   color: var(--brand-primary-strong);
@@ -269,13 +293,13 @@ main:has([data-login-screen]) [data-offline-notice] {
 
 .login-form__heading p {
   margin: 0;
-  font-size: 1rem;
-  line-height: 1.45;
+  font-size: 0.875rem;
+  line-height: 1.35;
   color: var(--text-secondary);
 }
 
 .login-form label {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -295,9 +319,9 @@ main:has([data-login-screen]) [data-offline-notice] {
 .login-field {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 56px;
-  padding: 0 var(--space-5);
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 var(--space-4);
   border: 1.5px solid var(--border-emphasis);
   border-radius: var(--radius-md);
   background: var(--background-surface);
@@ -306,7 +330,7 @@ main:has([data-login-screen]) [data-offline-notice] {
 }
 
 .login-field--bare {
-  padding-inline: var(--space-5);
+  padding-inline: var(--space-4);
 }
 
 .login-field:focus-within {
@@ -316,6 +340,8 @@ main:has([data-login-screen]) [data-offline-notice] {
 
 .login-field__icon {
   flex-shrink: 0;
+  width: 20px;
+  height: 20px;
   color: var(--icon-secondary);
 }
 
@@ -325,7 +351,7 @@ main:has([data-login-screen]) [data-offline-notice] {
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   color: var(--text-primary);
   outline: none;
 }
@@ -336,20 +362,20 @@ main:has([data-login-screen]) [data-offline-notice] {
 
 .login-form__error {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   color: #9b4a3c;
 }
 
 .login-form__primary {
-  margin-top: var(--space-2);
-  min-height: 56px;
+  margin-top: var(--space-1);
+  min-height: 48px;
   width: 100%;
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: 20px;
   background: var(--brand-primary);
   color: var(--text-on-primary);
   font: inherit;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--shadow-button);
@@ -381,13 +407,15 @@ main:has([data-login-screen]) [data-offline-notice] {
 }
 
 .login-form__secondary {
-  min-height: 44px;
+  min-height: 40px;
   width: 100%;
+  margin: 0;
+  padding: var(--space-1) 0;
   border: 0;
   background: transparent;
   color: var(--brand-primary);
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
   text-decoration: underline;
@@ -397,6 +425,25 @@ main:has([data-login-screen]) [data-offline-notice] {
 .login-form__secondary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Short phones: squeeze atmospheric band further so the stack stays one screen */
+@media (max-height: 780px) {
+  .login-screen {
+    gap: var(--space-2);
+  }
+
+  .login-screen__brand {
+    padding-top: var(--space-3);
+  }
+
+  .login-screen__illustration {
+    height: clamp(3.75rem, 10vh, 5.25rem);
+  }
+
+  .login-form__secondary {
+    min-height: 36px;
+  }
 }
 
 [data-offline-notice],
@@ -683,6 +730,11 @@ main:has([data-login-screen]) [data-offline-notice] {
 [data-login-step] button {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Dense login primary keeps a slightly taller control; still ≥ 44 px */
+[data-login-step] .login-form__primary {
+  min-height: 48px;
 }
 
 .occurrence__actions button {

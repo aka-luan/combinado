@@ -117,12 +117,16 @@ Shadows are soft and sparse (`--shadow-soft`, `--shadow-card`, `--shadow-button`
 
 ## 6. Login screen composition
 
+The full stack must fit a ~390×844 viewport without scrolling (PWA / mobile Safari).
+Use the dense mobile scale in `globals.css` (tighter gaps, ~48 px controls, compact
+cards, short illustration band) — not the generous desktop-mockup spacing from §5.
+
 1. Brand mark + wordmark + tagline
 2. Value proposition
 3. Privacy reassurance card
 4. Email OTP form (primary) + temporary-password secondary path
 5. “Como funciona?” divider
-6. Editorial illustration slot (raster wired later)
+6. Editorial illustration slot (raster wired later; height-capped, not full 16:9)
 7. Security reassurance card
 
 ### Privacy copy (architecture-accurate)

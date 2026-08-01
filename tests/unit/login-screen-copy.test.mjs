@@ -12,7 +12,7 @@ test("login privacy copy matches cloud Registro + device cache architecture", ()
   assert.match(screen, /Privado e só nosso/);
   assert.match(screen, /código enviado para o seu e-mail/);
   assert.match(screen, /nuvem da Casa/);
-  assert.match(screen, /cache de leitura offline/);
+  assert.match(screen, /cache offline/);
 
   // Reject the mockup claim that data lives only on-device + backup.
   assert.doesNotMatch(screen, /apenas neste aparelho/);
