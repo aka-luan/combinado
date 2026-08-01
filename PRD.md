@@ -241,6 +241,14 @@ Ações permitidas em Amanhã:
 - trocar ou remover responsável;
 - editar ou cancelar evento avulso.
 
+Editar um Evento avulso futuro e não concluído abre o formulário focado e pode
+alterar título, data, alvo, horário, requer confirmação e Responsável,
+respeitando as regras de data do §8.7. A edição torna-se uma nova revisão
+auditável do planejamento; a revisão anterior não é apagada. Se a nova data
+for Hoje, a Ocorrência aparece em Hoje após o snapshot seguinte. Um Evento já
+concluído não é editado diretamente; sua correção usa o fluxo de conclusão do
+§8.3.
+
 Não é permitido:
 
 - concluir compromisso amanhã;
@@ -305,6 +313,11 @@ Se o adulto não planejado concluir:
 - o executor real é registrado separadamente.
 
 ### 8.3 Conclusão
+
+Toda Ocorrência confirmável — incluindo Dose, Evento avulso e Rotina semanal —
+pode ser concluída na data da Ocorrência por qualquer Adulto. A conclusão
+registra o Responsável planejado, quando houver, e o Adulto executor com o
+horário real.
 
 - Um check dedicado conclui com um toque.
 - Tocar no restante da linha abre detalhes e ações.
@@ -412,6 +425,11 @@ Eventos:
 - podem ser criados para qualquer data futura;
 - não possuem duração, horário final, local, notas ou anexos;
 - são cancelados com auditoria, nunca apagados fisicamente.
+
+Eventos futuros não concluídos podem receber revisões de planejamento
+auditáveis. A revisão vigente é a mais recente; cancelar preserva o evento e
+sua auditoria. Conclusão e correção continuam referenciando o planejamento
+vigente no momento da ação.
 
 ---
 
@@ -669,9 +687,12 @@ Sem dados, Hoje mostra `Configurar casa`.
 
 Fluxo mínimo:
 
-1. cadastrar criança;
-2. cadastrar rotina ou medicamento;
-3. retornar a Hoje.
+1. cadastrar uma Criança;
+2. escolher e cadastrar uma Rotina semanal ou um Medicamento;
+3. retornar ao Hoje pelo CTA `Criar combinado e abrir o Hoje`.
+
+O gate só libera o Hoje depois de existir uma Criança ativa e pelo menos uma
+Rotina ou um Medicamento ativo. Não é necessário cadastrar os dois.
 
 Não existe tutorial em carrossel.
 
