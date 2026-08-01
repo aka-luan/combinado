@@ -9,10 +9,10 @@ export default function Home() {
 
   return (
     <main>
+      <h1>Combinado</h1>
       {appEnv !== "production" && <p data-app-env={appEnv}>Ambiente: {appEnv}</p>}
       <ConnectivityNotice />
       <AuthGate>
-        <h1 className="app-shell-title">Combinado</h1>
         <PushLifecycle />
         <HouseholdHome />
         <SettingsPanel />
