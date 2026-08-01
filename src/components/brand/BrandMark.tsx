@@ -3,8 +3,8 @@ export function BrandMark({ className }: { className?: string }) {
   return (
     <svg
       className={className}
-      width="48"
-      height="42"
+      width="40"
+      height="35"
       viewBox="0 0 72 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

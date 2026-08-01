@@ -86,9 +86,9 @@ main:has([data-login-screen]) {
   text-align: left;
   background: var(--background-app);
   color: var(--text-primary);
-  padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-5)
-    calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
-  gap: var(--space-2);
+  padding: calc(var(--space-2) + env(safe-area-inset-top, 0px)) var(--space-5)
+    calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  gap: 0;
 }
 
 /* Keep chrome out of the vertical budget so the stack can fit without scroll */
@@ -121,7 +121,7 @@ main:has([data-login-screen]) [data-offline-notice] {
   margin-inline: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   animation: login-enter var(--motion-fast) var(--ease-calm) both;
 }
 
@@ -141,16 +141,16 @@ main:has([data-login-screen]) [data-offline-notice] {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--space-1);
-  padding-top: var(--space-5);
+  gap: 2px;
+  padding-top: var(--space-2);
 }
 
 .login-screen__brand--compact {
-  padding-top: var(--space-6);
+  padding-top: var(--space-4);
 }
 
 .login-screen__mark {
-  width: 48px;
+  width: 40px;
   height: auto;
   margin-bottom: 0;
 }
@@ -158,7 +158,7 @@ main:has([data-login-screen]) [data-offline-notice] {
 .login-screen__wordmark {
   margin: 0;
   font-family: var(--font-display), Georgia, "Times New Roman", serif;
-  font-size: clamp(2.25rem, 7vw, 2.75rem);
+  font-size: clamp(2rem, 6.5vw, 2.5rem);
   font-weight: 600;
   line-height: 1;
   color: var(--brand-primary-strong);
@@ -167,18 +167,18 @@ main:has([data-login-screen]) [data-offline-notice] {
 
 .login-screen__tagline {
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 500;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 
 .login-screen__promise {
-  margin: var(--space-2) 0 0;
+  margin: var(--space-1) 0 0;
   max-width: 20rem;
-  font-size: 0.9375rem;
-  line-height: 1.35;
+  font-size: 0.875rem;
+  line-height: 1.3;
   color: var(--text-primary);
 }
 
@@ -217,7 +217,7 @@ main:has([data-login-screen]) [data-offline-notice] {
 .login-screen__illustration {
   margin: 0;
   width: 100%;
-  height: clamp(4.75rem, 12vh, 6.5rem);
+  height: clamp(3.5rem, 9vh, 5rem);
   border-radius: var(--radius-md);
   background:
     linear-gradient(180deg, var(--color-cream-100) 0%, var(--color-cream-200) 100%);
@@ -236,7 +236,7 @@ main:has([data-login-screen]) [data-offline-notice] {
   display: flex;
   gap: var(--space-3);
   align-items: center;
-  padding: var(--space-3) var(--space-4);
+  padding: 10px var(--space-3);
   border-radius: var(--radius-md);
   background: var(--background-soft);
 }
@@ -245,56 +245,56 @@ main:has([data-login-screen]) [data-offline-notice] {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
   background: var(--background-muted);
   color: var(--icon-primary);
 }
 
 .reassurance-card__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .reassurance-card__title {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1.2;
   color: var(--text-primary);
 }
 
 .reassurance-card__copy {
-  margin: 0.1rem 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.35;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
   color: var(--text-secondary);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
   text-align: left;
 }
 
 .login-form__heading {
-  margin-bottom: var(--space-1);
+  margin-bottom: 2px;
 }
 
 .login-form__heading h2 {
-  margin: 0 0 var(--space-1);
-  font-size: 1.125rem;
+  margin: 0 0 2px;
+  font-size: 1.0625rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--brand-primary-strong);
 }
 
 .login-form__heading p {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.35;
+  font-size: 0.8125rem;
+  line-height: 1.3;
   color: var(--text-secondary);
 }
 
@@ -367,15 +367,15 @@ main:has([data-login-screen]) [data-offline-notice] {
 }
 
 .login-form__primary {
-  margin-top: var(--space-1);
-  min-height: 48px;
+  margin-top: 2px;
+  min-height: 46px;
   width: 100%;
   border: 0;
-  border-radius: 20px;
+  border-radius: 18px;
   background: var(--brand-primary);
   color: var(--text-on-primary);
   font: inherit;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
   box-shadow: var(--shadow-button);
@@ -407,19 +407,19 @@ main:has([data-login-screen]) [data-offline-notice] {
 }
 
 .login-form__secondary {
-  min-height: 40px;
+  min-height: 32px;
   width: 100%;
   margin: 0;
-  padding: var(--space-1) 0;
+  padding: 4px 0;
   border: 0;
   background: transparent;
   color: var(--brand-primary);
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 2px;
 }
 
 .login-form__secondary:disabled {
@@ -427,22 +427,26 @@ main:has([data-login-screen]) [data-offline-notice] {
   cursor: not-allowed;
 }
 
-/* Short phones: squeeze atmospheric band further so the stack stays one screen */
+/* Short phones / mobile Safari chrome (~664 CSS px): keep the full stack above the fold */
 @media (max-height: 780px) {
   .login-screen {
-    gap: var(--space-2);
+    gap: 6px;
   }
 
   .login-screen__brand {
-    padding-top: var(--space-3);
+    padding-top: 0;
   }
 
   .login-screen__illustration {
-    height: clamp(3.75rem, 10vh, 5.25rem);
+    height: 3.25rem;
   }
 
-  .login-form__secondary {
-    min-height: 36px;
+  .login-form__primary {
+    min-height: 44px;
+  }
+
+  .login-field {
+    min-height: 44px;
   }
 }
 
@@ -732,9 +736,20 @@ main:has([data-login-screen]) [data-offline-notice] {
   min-width: 44px;
 }
 
-/* Dense login primary keeps a slightly taller control; still ≥ 44 px */
+/* Dense login controls: keep ≥ 44 px without the shared rule inflating the secondary link */
 [data-login-step] .login-form__primary {
-  min-height: 48px;
+  min-height: 46px;
+}
+
+[data-login-step] .login-form__secondary {
+  min-height: 32px;
+  min-width: 0;
+}
+
+@media (max-height: 780px) {
+  [data-login-step] .login-form__primary {
+    min-height: 44px;
+  }
 }
 
 .occurrence__actions button {
