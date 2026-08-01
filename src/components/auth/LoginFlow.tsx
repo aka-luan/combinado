@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requestOtp, verifyOtp, signInWithTemporaryPassword } from "@/lib/auth/session";
 import { mapAuthError } from "@/lib/auth/errors";
 import { secondsUntilResend, isCodeExpired } from "@/lib/auth/otp-timing";
+import { IconEnvelope } from "@/components/ui/icons";
 
 type Step = "email" | "code" | "password";
 
@@ -41,12 +42,12 @@ export function LoginFlow({ client }: { client: SupabaseClient }) {
     setStep("code");
   }
 
-  async function handleRequestSubmit(e: React.FormEvent) {
+  async function handleRequestSubmit(e: FormEvent) {
     e.preventDefault();
     await sendCode();
   }
 
-  async function handleVerifySubmit(e: React.FormEvent) {
+  async function handleVerifySubmit(e: FormEvent) {
     e.preventDefault();
     setPending(true);
     setError(null);
@@ -59,7 +60,7 @@ export function LoginFlow({ client }: { client: SupabaseClient }) {
     // re-renders as authenticated — no local state transition needed here.
   }
 
-  async function handlePasswordSubmit(e: React.FormEvent) {
+  async function handlePasswordSubmit(e: FormEvent) {
     e.preventDefault();
     setPending(true);
     setError(null);
@@ -72,32 +73,56 @@ export function LoginFlow({ client }: { client: SupabaseClient }) {
 
   if (step === "password") {
     return (
-      <form onSubmit={handlePasswordSubmit} data-login-step="password">
-        <h1>Senha temporária</h1>
-        <p>Use a senha definida administrativamente para recuperar o acesso.</p>
+      <form
+        onSubmit={handlePasswordSubmit}
+        data-login-step="password"
+        className="login-form"
+      >
+        <div className="login-form__heading">
+          <h2>Senha temporária</h2>
+          <p>Use a senha definida administrativamente para recuperar o acesso.</p>
+        </div>
         <label htmlFor="login-password-email">E-mail</label>
-        <input
-          id="login-password-email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className="login-field">
+          <IconEnvelope className="login-field__icon" />
+          <input
+            id="login-password-email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="seu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
         <label htmlFor="login-password">Senha temporária</label>
-        <input
-          id="login-password"
-          type="password"
-          required
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={pending || email.length === 0 || password.length === 0}>
+        <div className="login-field login-field--bare">
+          <input
+            id="login-password"
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        {error && (
+          <p role="alert" className="login-form__error">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          className="login-form__primary"
+          disabled={pending || email.length === 0 || password.length === 0}
+        >
           Entrar
         </button>
-        <button type="button" onClick={() => setStep("email")}>
+        <button
+          type="button"
+          className="login-form__secondary"
+          onClick={() => setStep("email")}
+        >
           Voltar para o código por e-mail
         </button>
       </form>
@@ -106,22 +131,47 @@ export function LoginFlow({ client }: { client: SupabaseClient }) {
 
   if (step === "email") {
     return (
-      <form onSubmit={handleRequestSubmit} data-login-step="email">
-        <h1>Entrar</h1>
-        <label htmlFor="login-email">E-mail</label>
-        <input
-          id="login-email"
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={pending || email.length === 0}>
+      <form
+        onSubmit={handleRequestSubmit}
+        data-login-step="email"
+        className="login-form"
+      >
+        <div className="login-form__heading">
+          <h2>Entrar com e-mail</h2>
+          <p>Enviaremos um código de acesso.</p>
+        </div>
+        <label className="login-form__sr-label" htmlFor="login-email">
+          E-mail
+        </label>
+        <div className="login-field">
+          <IconEnvelope className="login-field__icon" />
+          <input
+            id="login-email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="seu@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        {error && (
+          <p role="alert" className="login-form__error">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          className="login-form__primary"
+          disabled={pending || email.length === 0}
+        >
           Enviar código
         </button>
-        <button type="button" onClick={() => setStep("password")}>
+        <button
+          type="button"
+          className="login-form__secondary"
+          onClick={() => setStep("password")}
+        >
           Usar senha temporária
         </button>
       </form>
@@ -129,26 +179,51 @@ export function LoginFlow({ client }: { client: SupabaseClient }) {
   }
 
   return (
-    <form onSubmit={handleVerifySubmit} data-login-step="code">
-      <h1>Digite o código</h1>
-      <p>Enviamos um código de seis dígitos para {email}.</p>
+    <form
+      onSubmit={handleVerifySubmit}
+      data-login-step="code"
+      className="login-form"
+    >
+      <div className="login-form__heading">
+        <h2>Digite o código</h2>
+        <p>Enviamos um código de seis dígitos para {email}.</p>
+      </div>
       <label htmlFor="login-code">Código</label>
-      <input
-        id="login-code"
-        inputMode="numeric"
-        pattern="[0-9]{6}"
-        maxLength={6}
-        required
-        autoComplete="one-time-code"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-      />
-      {expired && <p role="alert">Código expirado. Solicite um novo código.</p>}
-      {error && <p role="alert">{error}</p>}
-      <button type="submit" disabled={pending || expired || code.length !== 6}>
+      <div className="login-field login-field--bare">
+        <input
+          id="login-code"
+          inputMode="numeric"
+          pattern="[0-9]{6}"
+          maxLength={6}
+          required
+          autoComplete="one-time-code"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
+      </div>
+      {expired && (
+        <p role="alert" className="login-form__error">
+          Código expirado. Solicite um novo código.
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="login-form__error">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        className="login-form__primary"
+        disabled={pending || expired || code.length !== 6}
+      >
         Confirmar
       </button>
-      <button type="button" disabled={pending || cooldown > 0} onClick={sendCode}>
+      <button
+        type="button"
+        className="login-form__secondary"
+        disabled={pending || cooldown > 0}
+        onClick={sendCode}
+      >
         {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar código"}
       </button>
     </form>
