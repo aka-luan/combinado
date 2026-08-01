@@ -128,12 +128,39 @@ export function isConfirmableEvent(
   return occurrence.requires_confirmation && (occurrence.status === "scheduled" || occurrence.status === "late");
 }
 
+export function isConfirmableRoutine(
+  occurrence: SnapshotOccurrence,
+  day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "routine" || day !== "today") return false;
+  return (
+    occurrence.requires_confirmation &&
+    (occurrence.status === "scheduled" || occurrence.status === "late")
+  );
+}
+
 export function isReversibleEvent(
   occurrence: SnapshotOccurrence,
   day: "today" | "tomorrow",
 ): boolean {
   if (occurrence.source !== "event" || day !== "today") return false;
   return occurrence.status === "completed" && Boolean(occurrence.confirmation_id);
+}
+
+export function isReversibleRoutine(
+  occurrence: SnapshotOccurrence,
+  day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "routine" || day !== "today") return false;
+  return occurrence.status === "completed" && Boolean(occurrence.confirmation_id);
+}
+
+export function isEditableEvent(
+  occurrence: SnapshotOccurrence,
+  day: "today" | "tomorrow",
+): boolean {
+  if (occurrence.source !== "event" || day !== "tomorrow") return false;
+  return occurrence.status !== "completed" && occurrence.status !== "cancelled";
 }
 
 export function isCancellableEvent(

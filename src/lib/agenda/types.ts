@@ -35,6 +35,7 @@ export type SnapshotOccurrence = {
   routine_exception_active?: boolean;
   routine_exception_time_overridden?: boolean;
   routine_exception_owner_overridden?: boolean;
+  planning_revision_id?: string | null;
 };
 
 export type DaySnapshot = {
