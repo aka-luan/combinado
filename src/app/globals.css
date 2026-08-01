@@ -691,7 +691,7 @@ body:has(.pwa-update-banner) main {
 .agenda__operational-state {
   margin: 0 0 0.8rem;
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
 }
 
 .agenda__error {
