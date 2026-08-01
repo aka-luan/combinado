@@ -12,6 +12,8 @@ test("manifest.webmanifest is valid JSON with the required PWA fields", () => {
 
   assert.equal(manifest.name, "Combinado");
   assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.background_color, "#fcfaf6");
+  assert.equal(manifest.theme_color, "#fcfaf6");
   assert.equal(typeof manifest.id, "string");
   assert.ok(manifest.id.length > 0, "manifest must declare a stable id");
   assert.equal(typeof manifest.theme_color, "string");
@@ -27,4 +29,12 @@ test("manifest.webmanifest is valid JSON with the required PWA fields", () => {
   const sizes = new Set(manifest.icons.map((icon) => icon.sizes));
   assert.ok(sizes.has("192x192"), "must provide a 192x192 icon");
   assert.ok(sizes.has("512x512"), "must provide a 512x512 icon");
+
+  const purposes = new Set(manifest.icons.map((icon) => icon.purpose));
+  assert.ok(purposes.has("any"), "must provide a standard brand icon");
+  assert.ok(purposes.has("maskable"), "must provide a maskable brand icon");
+  const maskableSources = manifest.icons
+    .filter((icon) => icon.purpose === "maskable")
+    .map((icon) => icon.src);
+  assert.ok(maskableSources.every((src) => src.includes("maskable")));
 });

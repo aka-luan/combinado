@@ -45,11 +45,14 @@ export function AgendaHome() {
     setSyncPhase("offline_cached");
     blockWritesUntilRefetchRef.current = true;
     if (!uid) {
+      setSyncPhase("unavailable");
       setState({ kind: "offline", view: { kind: "unavailable" } });
       return;
     }
     const cached = await getAgendaCache(getDefaultAgendaCacheStore(), uid);
-    setState({ kind: "offline", view: resolveOfflineAgendaView(cached, new Date()) });
+    const view = resolveOfflineAgendaView(cached, new Date());
+    if (view.kind === "unavailable") setSyncPhase("unavailable");
+    setState({ kind: "offline", view });
   }, []);
 
   const refresh = useCallback(async () => {
@@ -207,7 +210,7 @@ export function AgendaHome() {
   }, [client, refresh]);
 
   if (state.kind === "loading") {
-    return <p data-agenda="loading">Carregando…</p>;
+    return <p data-agenda="loading">Carregando o Registro…</p>;
   }
 
   if (state.kind === "unavailable") {

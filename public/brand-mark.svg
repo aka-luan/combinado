@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Combinado</title>
+  <rect width="64" height="64" rx="14" fill="#fcfaf6"/>
+  <circle cx="18" cy="13" r="6" fill="#4e5d32"/>
+  <circle cx="46" cy="13" r="6" fill="#d88b63"/>
+  <path d="M7 35 27 19l5 4-20 16Z" fill="#4e5d32"/>
+  <path d="m57 35-20-16-5 4 20 16Z" fill="#d88b63"/>
+  <path d="M15 35h34v23H15z" fill="#eee6db" stroke="#3f4d2a" stroke-width="2"/>
+  <path d="M28 44h8v14h-8z" fill="#4e5d32"/>
+  <path d="M20 41h5v5h-5zm19 0h5v5h-5z" fill="#fcfaf6"/>
+</svg>

@@ -66,7 +66,7 @@ export function HouseholdHome() {
   }, [refresh]);
 
   if (gate.kind === "loading") {
-    return <p data-household-home="loading">Carregando…</p>;
+    return <p data-household-home="loading">Carregando a Casa…</p>;
   }
 
   if (gate.kind === "unavailable") {

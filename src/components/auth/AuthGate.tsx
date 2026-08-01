@@ -5,6 +5,21 @@ import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { resolveGateView } from "@/lib/auth/gate-view";
 import { LoginFlow } from "./LoginFlow";
+import { Brand } from "@/components/shell/Brand";
+import { ConnectivityNotice } from "@/app/connectivity-notice";
+
+function PublicShell({ children }: { children: React.ReactNode }) {
+  return (
+    <section className="public-shell" data-public-shell>
+      <div className="public-shell__topline">
+        <Brand heading />
+        <span className="public-shell__private">Privado</span>
+      </div>
+      <ConnectivityNotice surface="access" />
+      {children}
+    </section>
+  );
+}
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => getSupabaseBrowserClient());
@@ -35,9 +50,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (client === null) {
     return (
-      <p data-auth-config-missing>
-        Autenticação não está configurada para este ambiente.
-      </p>
+      <PublicShell>
+        <p data-auth-config-missing>
+          Autenticação não está configurada para este ambiente.
+        </p>
+      </PublicShell>
     );
   }
 
@@ -49,9 +66,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       // checked above. Kept so resolveGateView's return type stays exhaustive.
       return null;
     case "loading":
-      return <p data-auth-loading>Carregando…</p>;
+      return (
+        <PublicShell>
+          <p data-auth-loading>Carregando o acesso…</p>
+        </PublicShell>
+      );
     case "login":
-      return <LoginFlow client={client} />;
+      return (
+        <PublicShell>
+          <LoginFlow client={client} />
+        </PublicShell>
+      );
     case "authenticated":
       return <>{children}</>;
   }
