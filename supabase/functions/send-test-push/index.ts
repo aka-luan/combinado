@@ -8,6 +8,24 @@ type SubscriptionRow = {
   auth: string;
 };
 
+type NotificationPayload = {
+  title: string;
+  body: string;
+  url: string;
+};
+
+type AuthorizationMethod = "cron_secret" | "service_role";
+
+const DEFAULT_NOTIFICATION: NotificationPayload = {
+  title: "Teste do Combinado",
+  body: "Notificação de teste recebida neste aparelho.",
+  url: "/",
+};
+
+const MAX_TITLE_LENGTH = 200;
+const MAX_BODY_LENGTH = 4000;
+const MAX_URL_LENGTH = 2048;
+
 function b64urlToBytes(value: string): Uint8Array {
   const padded = value + "=".repeat((4 - (value.length % 4)) % 4);
   const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
@@ -121,15 +139,79 @@ async function loadVapidKeys(): Promise<CryptoKeyPair> {
   return await webpush.importVapidKeys(vapidBase64ToJwk(vapidPublic, vapidPrivate));
 }
 
-function authorize(req: Request): boolean {
-  const cronSecret = Deno.env.get("PUSH_CRON_SECRET");
-  if (cronSecret && req.headers.get("x-cron-secret") === cronSecret) return true;
-
+function authorize(req: Request): AuthorizationMethod | null {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const auth = req.headers.get("Authorization") ?? "";
-  if (serviceKey && auth === `Bearer ${serviceKey}`) return true;
+  if (serviceKey && auth === `Bearer ${serviceKey}`) return "service_role";
 
-  return false;
+  const cronSecret = Deno.env.get("PUSH_CRON_SECRET");
+  if (cronSecret && req.headers.get("x-cron-secret") === cronSecret) {
+    return "cron_secret";
+  }
+
+  return null;
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function readNotificationPayload(
+  req: Request,
+  authorization: AuthorizationMethod,
+): Promise<NotificationPayload | Response> {
+  const contentType = req.headers.get("Content-Type")?.toLowerCase() ?? "";
+  if (!contentType.includes("application/json")) return DEFAULT_NOTIFICATION;
+
+  let input: unknown;
+  try {
+    input = await req.json();
+  } catch {
+    return jsonResponse({ error: "invalid_json" }, 400);
+  }
+
+  if (!isRecord(input)) {
+    return jsonResponse({ error: "invalid_payload" }, 400);
+  }
+
+  const hasCustomPayload = ["title", "body", "url"].some((key) => key in input);
+  if (hasCustomPayload && authorization !== "service_role") {
+    return jsonResponse({ error: "custom_payload_requires_service_role" }, 403);
+  }
+
+  const fields: Array<keyof NotificationPayload> = ["title", "body", "url"];
+  const values = { ...DEFAULT_NOTIFICATION };
+  for (const field of fields) {
+    const value = input[field];
+    if (value === undefined) continue;
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return jsonResponse({ error: `invalid_${field}` }, 400);
+    }
+    values[field] = value;
+  }
+
+  if (values.title.length > MAX_TITLE_LENGTH) {
+    return jsonResponse({ error: "title_too_long", max: MAX_TITLE_LENGTH }, 400);
+  }
+  if (values.body.length > MAX_BODY_LENGTH) {
+    return jsonResponse({ error: "body_too_long", max: MAX_BODY_LENGTH }, 400);
+  }
+  if (
+    values.url.length > MAX_URL_LENGTH ||
+    !values.url.startsWith("/") ||
+    values.url.startsWith("//")
+  ) {
+    return jsonResponse({ error: "invalid_url" }, 400);
+  }
+
+  return values;
 }
 
 Deno.serve(async (req) => {
@@ -141,8 +223,9 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "method_not_allowed" }), { status: 405 });
   }
 
-  if (!authorize(req)) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+  const authorization = authorize(req);
+  if (!authorization) {
+    return jsonResponse({ error: "unauthorized" }, 401);
   }
 
   const vapidSubject = Deno.env.get("VAPID_SUBJECT") ?? "mailto:combinado@localhost";
@@ -158,20 +241,26 @@ Deno.serve(async (req) => {
       vapidSubject,
       supabaseUrl,
       serviceKey,
+      authorization,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown";
-    return new Response(JSON.stringify({ error: "internal", message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "internal", message }, 500);
   }
 });
 
 async function handleSend(
-  _req: Request,
-  env: { vapidSubject: string; supabaseUrl: string; serviceKey: string },
+  req: Request,
+  env: {
+    vapidSubject: string;
+    supabaseUrl: string;
+    serviceKey: string;
+    authorization: AuthorizationMethod;
+  },
 ) {
+  const notification = await readNotificationPayload(req, env.authorization);
+  if (notification instanceof Response) return notification;
+
   let vapidKeys: CryptoKeyPair;
   try {
     vapidKeys = await loadVapidKeys();
@@ -204,17 +293,10 @@ async function handleSend(
     .select("id, endpoint, p256dh, auth");
 
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: error.message }, 500);
   }
 
-  const payload = JSON.stringify({
-    title: "Combinado",
-    body: "Teste de notificação — o caminho de push está ativo.",
-    url: "/",
-  });
+  const payload = JSON.stringify(notification);
 
   // Public by design — compare to NEXT_PUBLIC_VAPID_PUBLIC_KEY in the PWA build.
   let serverVapidPublicKey: string;
@@ -276,15 +358,12 @@ async function handleSend(
     await admin.from("push_subscriptions").delete().in("id", staleIds);
   }
 
-  return new Response(
-    JSON.stringify({
-      attempted: results.length,
-      removed: staleIds.length,
-      serverVapidPublicKey,
-      results,
-    }),
-    { headers: { "Content-Type": "application/json" } },
-  );
+  return jsonResponse({
+    attempted: results.length,
+    removed: staleIds.length,
+    serverVapidPublicKey,
+    results,
+  });
 }
 
 function isPushMessageError(

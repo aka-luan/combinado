@@ -39,6 +39,26 @@ CI — nunca neste repositório.
 4. Endpoints que respondem **404** ou **410** são removidos da tabela
    automaticamente pela Function.
 
+Para validar copy específica nos aparelhos reais, a mesma Function aceita um
+payload manual autenticado com a service role. O corpo padrão continua sendo o
+teste aprovado (`Teste do Combinado`); o Cron não pode sobrescrever a copy.
+Nunca cole a service role, nomes reais ou dados de saúde em issues ou no git.
+
+Exemplo de payload manual:
+
+```bash
+curl -X POST "$SUPABASE_URL/functions/v1/send-test-push" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "x-cron-secret: $PUSH_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"source":"manual","title":"Hora de verificar","body":"Criança · Medicamento · 08:00.\nInstrução registrada: texto literal."}'
+```
+
+Envie um caso por vez. Para o resumo, use `Amanhã no Combinado` no título e
+as contagens/casos sem Responsável no corpo. A Function entrega o mesmo
+payload a todas as inscrições ativas; depois observe cada iPhone com o PWA
+fechado, na Tela Bloqueada e na Central de Notificações sem expandir.
+
 ## Cron no plano Free
 
 1. Habilite as extensões `pg_cron` e `pg_net` no projeto (Database →
