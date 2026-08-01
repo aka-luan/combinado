@@ -1,0 +1,41 @@
+.switcher {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  font-size: 0.82rem;
+}
+
+.switcher span {
+  min-width: 10.5rem;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher button {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}

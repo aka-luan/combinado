@@ -1,0 +1,59 @@
+.stage {
+  --ink: #17201b;
+  --muted: #667069;
+  --paper: #f4f0e8;
+  --accent: #2d6749;
+  min-height: 100dvh;
+  display: block;
+  padding: 2rem 1.25rem 7rem;
+  background: radial-gradient(circle at 15% 5%, #fff 0, transparent 28rem), var(--paper);
+  color: var(--ink);
+  text-align: left;
+}
+
+.header, .controls, .workspace { width: min(100%, 68rem); margin-inline: auto; }
+.header { margin-bottom: 1.5rem; }
+.eyebrow { color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.13em; }
+.header h1 { max-width: 14ch; margin: 0.35rem 0 0.55rem; font-family: Georgia, serif; font-size: clamp(2rem, 6vw, 4.4rem); font-weight: 500; line-height: 0.98; letter-spacing: -0.04em; }
+.header p { max-width: 38rem; margin: 0; color: var(--muted); line-height: 1.55; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; }
+.controls label { display: grid; gap: 0.3rem; color: var(--muted); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.controls select { min-width: 12rem; padding: 0.7rem 2.2rem 0.7rem 0.8rem; border: 1px solid #c9cec9; border-radius: 0.65rem; background: #fff; color: var(--ink); font: inherit; font-size: 0.9rem; text-transform: none; }
+
+.workspace { display: grid; grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); gap: clamp(1.5rem, 5vw, 5rem); align-items: center; }
+.phone { position: relative; min-height: 41rem; padding: 1.2rem 0.8rem; overflow: hidden; border: 7px solid #1b1d1c; border-radius: 3rem; background: linear-gradient(150deg, #586b78, #a9b4af 46%, #52675f); box-shadow: 0 2rem 5rem rgba(25, 36, 30, 0.28); color: #111; }
+.phone::before { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(255,255,255,.35), transparent 38%); pointer-events: none; }
+.dynamicIsland { position: relative; z-index: 1; width: 7.2rem; height: 1.8rem; margin: 0 auto 2rem; border-radius: 999px; background: #080908; }
+.lockHeader { position: relative; z-index: 1; display: grid; justify-items: center; margin-bottom: 8rem; color: #fff; text-shadow: 0 1px 10px rgba(0,0,0,.24); }
+.lockHeader strong { font-size: 4.6rem; font-weight: 300; letter-spacing: -0.08em; line-height: 1; }
+.lockHeader span { font-size: 0.95rem; }
+.notification { position: relative; z-index: 1; padding: 0.8rem 0.85rem 0.9rem; border: 1px solid rgba(255,255,255,.45); border-radius: 1.25rem; background: rgba(247, 247, 244, 0.87); box-shadow: 0 0.6rem 2rem rgba(0,0,0,.16); backdrop-filter: blur(20px); }
+.appRow { display: grid; grid-template-columns: auto 1fr auto; gap: 0.4rem; align-items: center; color: #5d625f; font-size: 0.68rem; }
+.appRow time { font-weight: 500; }
+.icon { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 0.35rem; background: #295d42; color: #fff; font-weight: 800; }
+.notification h2 { margin: 0.45rem 0 0.14rem; font-size: 0.95rem; line-height: 1.2; }
+.notification p { display: -webkit-box; margin: 0; overflow: hidden; white-space: pre-line; -webkit-box-orient: vertical; font-size: 0.9rem; line-height: 1.28; }
+.simulationNote { position: absolute; z-index: 1; right: 0; bottom: 1.25rem; left: 0; color: rgba(255,255,255,.86); text-align: center; }
+
+.inspector { display: grid; gap: 1rem; }
+.variantTitle { display: grid; gap: 0.2rem; padding-bottom: 1rem; border-bottom: 1px solid #cdd2cd; }
+.variantTitle span { color: var(--accent); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.variantTitle strong { font-family: Georgia, serif; font-size: clamp(1.7rem, 4vw, 2.8rem); font-weight: 500; }
+.rationale p { max-width: 34rem; margin: 0 0 1rem; font-size: 1.1rem; line-height: 1.55; }
+.rationale dl, .payload dl { display: grid; gap: 0.7rem; margin: 0; }
+.rationale dl div, .payload dl div { display: grid; grid-template-columns: 6.5rem 1fr; gap: 1rem; }
+.rationale dt, .payload dt { color: var(--muted); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.rationale dd, .payload dd { margin: 0; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
+.payload { padding: 1rem; border: 1px solid #d3d7d3; border-radius: 0.85rem; background: rgba(255,255,255,.55); }
+.payload h2 { margin: 0 0 0.8rem; font-size: 0.88rem; text-transform: uppercase; letter-spacing: .07em; }
+.guardrail { margin: 0; padding-left: 0.8rem; border-left: 3px solid var(--accent); color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
+
+@media (max-width: 720px) {
+  .stage { padding-inline: 1rem; }
+  .workspace { grid-template-columns: 1fr; }
+  .phone { width: min(100%, 23rem); min-height: 39rem; margin-inline: auto; }
+  .lockHeader { margin-bottom: 6rem; }
+  .inspector { padding-bottom: 2rem; }
+  .rationale dl div, .payload dl div { grid-template-columns: 1fr; gap: 0.2rem; }
+}
