@@ -31,7 +31,19 @@ function fakeJwt(payload: Record<string, unknown>): string {
 
 async function openAuthenticatedShell(
   page: Page,
-  options: { agenda?: "none" | "ready" | "error" | "setup" | "dense" | "tomorrow" } = {},
+  options: {
+    agenda?:
+      | "none"
+      | "ready"
+      | "error"
+      | "setup"
+      | "dense"
+      | "tomorrow"
+      | "stale"
+      | "routine"
+      | "event"
+      | "event-conflict";
+  } = {},
 ) {
   test.skip(!supabaseUrl, "Build-time Supabase URL is required for the authenticated shell");
 
@@ -74,6 +86,10 @@ async function openAuthenticatedShell(
   let releaseSnapshotGate: (() => void) | null = null;
   let setupChildCreated = false;
   let setupRoutineCreated = false;
+  let routineCompleted = false;
+  let routineCompletionGate: Promise<void> | null = null;
+  let releaseRoutineCompletionGate: (() => void) | null = null;
+  let eventEdited = false;
   await page.route(`${supabaseUrl}/rest/v1/**`, async (route) => {
     const url = route.request().url();
     if (options.agenda === "setup" && route.request().method() === "POST" && url.includes("/children")) {
@@ -147,6 +163,43 @@ async function openAuthenticatedShell(
       await route.fulfill({ json: "00000000-0000-4000-8000-000000000051" });
       return;
     }
+    if (options.agenda === "routine" && url.includes("/rpc/complete_weekly_routine")) {
+      if (routineCompletionGate) await routineCompletionGate;
+      routineCompleted = true;
+      await route.fulfill({
+        json: {
+          ok: true,
+          confirmation_id: "00000000-0000-4000-8000-000000000099",
+          confirmed_at: "2026-08-01T12:00:00.000Z",
+          confirmed_by_user_id: "00000000-0000-4000-8000-000000000052",
+          confirmed_by_display_name: "Adulto teste",
+          occurrence_key: "routine:00000000-0000-4000-8000-000000000001:2026-08-01",
+        },
+      });
+      return;
+    }
+    if (
+      (options.agenda === "event" || options.agenda === "event-conflict") &&
+      url.includes("/rpc/edit_one_off_event")
+    ) {
+      if (options.agenda === "event-conflict") {
+        await route.fulfill({
+          json: { ok: false, code: "planning_revision_conflict" },
+        });
+        return;
+      }
+      eventEdited = true;
+      await route.fulfill({
+        json: {
+          ok: true,
+          event_id: "00000000-0000-4000-8000-000000000101",
+          planning_revision_id: "00000000-0000-4000-8000-000000000102",
+          revision_number: 2,
+          local_date: "2026-08-02",
+        },
+      });
+      return;
+    }
     if (options.agenda && url.includes("/children?")) {
       await route.fulfill({
         json: [
@@ -164,10 +217,36 @@ async function openAuthenticatedShell(
       return;
     }
     if (
+      (options.agenda === "routine" || options.agenda === "event") &&
+      url.includes("/household_members?")
+    ) {
+      await route.fulfill({
+        json: [
+          {
+            household_id: "00000000-0000-4000-8000-000000000051",
+            user_id: "00000000-0000-4000-8000-000000000052",
+            display_name: "Adulto teste",
+            archived_at: null,
+          },
+          {
+            household_id: "00000000-0000-4000-8000-000000000051",
+            user_id: "00000000-0000-4000-8000-000000000056",
+            display_name: "Outro Adulto",
+            archived_at: null,
+          },
+        ],
+      });
+      return;
+    }
+    if (
       (options.agenda === "ready" ||
         options.agenda === "error" ||
         options.agenda === "dense" ||
-        options.agenda === "tomorrow") &&
+        options.agenda === "tomorrow" ||
+        options.agenda === "stale" ||
+        options.agenda === "routine" ||
+        options.agenda === "event" ||
+        options.agenda === "event-conflict") &&
       url.includes("/weekly_routines?")
     ) {
       await route.fulfill({
@@ -204,13 +283,25 @@ async function openAuthenticatedShell(
       }
       if (snapshotGate) await snapshotGate;
       const dense = options.agenda === "dense";
-      const tomorrow = options.agenda === "tomorrow";
+      const tomorrow =
+        options.agenda === "tomorrow" ||
+        options.agenda === "event" ||
+        options.agenda === "event-conflict";
+      const routine = options.agenda === "routine";
       const todayOccurrences = dense
         ? Array.from({ length: 100 }, (_, index) => fixtureOccurrence(index + 1))
+        : routine
+          ? [fixtureOccurrence(1, "2026-08-01", { source: "routine", completed: routineCompleted })]
         : tomorrow
           ? [fixtureOccurrence(1)]
           : [];
-      const tomorrowOccurrences = tomorrow ? [fixtureOccurrence(101, "2026-08-02")] : [];
+      const tomorrowOccurrences = tomorrow
+        ? [
+            fixtureOccurrence(101, "2026-08-02", {
+              title: eventEdited ? "Compromisso atualizado" : undefined,
+            }),
+          ]
+        : [];
       await route.fulfill({
         json: {
           server_time: tomorrow ? "2026-08-01T22:00:00.000Z" : "2026-08-01T15:00:00.000Z",
@@ -248,33 +339,56 @@ async function openAuthenticatedShell(
       snapshotGate = null;
       releaseSnapshotGate = null;
     },
+    holdRoutineCompletion() {
+      if (routineCompletionGate) return;
+      routineCompletionGate = new Promise<void>((resolve) => {
+        releaseRoutineCompletionGate = resolve;
+      });
+    },
+    releaseRoutineCompletion() {
+      releaseRoutineCompletionGate?.();
+      routineCompletionGate = null;
+      releaseRoutineCompletionGate = null;
+    },
   };
 }
 
-function fixtureOccurrence(index: number, localDate = "2026-08-01") {
+function fixtureOccurrence(
+  index: number,
+  localDate = "2026-08-01",
+  options: { source?: "event" | "routine"; title?: string; completed?: boolean } = {},
+) {
   const padded = String(index).padStart(3, "0");
+  const source = options.source ?? "event";
+  const completed = options.completed ?? index === 100;
+  const title = options.title ?? (
+    index === 1
+      ? "Levar a Criança para uma atividade importante com um título comprido para detalhes — "
+          .concat("detalhe repetido ".repeat(12))
+          .slice(0, 120)
+      : `Compromisso ${padded}`
+  );
   return {
-    key: `event:00000000-0000-4000-8000-0000000000${padded}:${localDate}`,
-    source: "event",
-    source_id: `00000000-0000-4000-8000-0000000000${padded}`,
+    key: `${source}:00000000-0000-4000-8000-000000000${padded}:${localDate}`,
+    source,
+    source_id: `00000000-0000-4000-8000-000000000${padded}`,
     local_date: localDate,
     slot: null,
-    title:
-      index === 1
-        ? "Levar a Criança para uma atividade importante com um título comprido para detalhes"
-        : `Compromisso ${padded}`,
+    title,
     target_kind: "child",
     child_id: "00000000-0000-4000-8000-000000000053",
-    target_label: index % 5 === 0 ? "Casa" : `Criança ${((index - 1) % 5) + 1}`,
-    scheduled_time: `${String(6 + ((index - 1) % 12)).padStart(2, "0")}:${String(index % 4).padStart(2, "0")}0`,
+    target_label: index % 11 === 0 ? "Casa" : `Criança ${((index - 1) % 5) + 1}`,
+    scheduled_time: `${String(6 + ((index - 1) % 12)).padStart(2, "0")}:${String((index % 4) * 10).padStart(2, "0")}`,
     requires_confirmation: true,
     owner_user_id: index % 3 === 0 ? null : "00000000-0000-4000-8000-000000000052",
     owner_display_name: index % 3 === 0 ? null : "Adulto teste",
-    status: index === 100 ? "completed" : "scheduled",
+    status: completed ? "completed" : "scheduled",
     needs_owner_alert: index % 3 === 0,
-    confirmed_by_display_name: index === 100 ? "Adulto teste" : null,
-    confirmed_at: index === 100 ? "2026-08-01T12:00:00.000Z" : null,
-    confirmation_id: index === 100 ? "00000000-0000-4000-8000-000000000099" : null,
+    confirmed_by_display_name: completed ? "Adulto teste" : null,
+    confirmed_at: completed ? "2026-08-01T12:00:00.000Z" : null,
+    confirmation_id: completed ? "00000000-0000-4000-8000-000000000099" : null,
+    routine_version_id: source === "routine" ? "00000000-0000-4000-8000-000000000055" : null,
+    planning_revision_id: source === "event" ? "00000000-0000-4000-8000-000000000102" : null,
   };
 }
 
@@ -481,6 +595,161 @@ test.describe("authenticated mobile shell", () => {
     expect(titles[1]).toBe("Compromisso 002");
     expect(titles[2]).toBe("Compromisso 003");
     expect(titles[3]).toBe("Compromisso 004");
+    expect(
+      await page.locator("[data-agenda-next] .occurrence__title").textContent(),
+    ).toHaveLength(120);
+
+    const childLabels = await page.locator("[data-occurrence-key] .occurrence__target").evaluateAll(
+      (targets) => [...new Set(
+        targets
+          .map((target) => target.textContent)
+          .filter((label): label is string => label?.startsWith("Criança ") ?? false),
+      )].sort(),
+    );
+    expect(childLabels).toEqual([
+      "Criança 1",
+      "Criança 2",
+      "Criança 3",
+      "Criança 4",
+      "Criança 5",
+    ]);
+  });
+
+  test("shows Registrando while a Rotina confirmável waits for the shared Registro", async ({ page }) => {
+    await page.clock.install({ time: "2026-08-01T15:00:00Z" });
+    const network = await openAuthenticatedShell(page, { agenda: "routine" });
+    const occurrence = page.locator('[data-occurrence-source="routine"]');
+    const complete = occurrence.locator('[data-complete-routine="true"]');
+    await expect(complete).toBeEnabled();
+
+    network.holdRoutineCompletion();
+    const routineRequest = page.waitForRequest((request) =>
+      request.url().includes("/rpc/complete_weekly_routine"),
+    );
+    await complete.click();
+    await expect(occurrence.locator("[data-record-registering]")).toHaveText("Registrando…");
+    await expect(occurrence).toHaveAttribute("data-occurrence-status", "scheduled");
+    const routinePayload = (await routineRequest).postDataJSON();
+    expect(routinePayload.p_routine_id).toBe("00000000-0000-4000-8000-000000000001");
+    expect(routinePayload.p_local_date).toBe("2026-08-01");
+
+    network.releaseRoutineCompletion();
+    await expect(occurrence).toHaveAttribute("data-occurrence-status", "completed");
+    await expect(occurrence).toContainText("Adulto teste");
+  });
+
+  test("edits a future Evento in Amanhã through the focused bottom sheet", async ({ page }) => {
+    await page.clock.install({ time: "2026-08-01T22:00:00Z" });
+    await openAuthenticatedShell(page, { agenda: "event" });
+
+    const occurrence = page.locator('[data-tomorrow-list] [data-occurrence-source="event"]');
+    await occurrence.locator("[data-occurrence-details]").click();
+    await expect(page.locator("[data-edit-event]")).toBeVisible();
+    await page.getByRole("button", { name: "Editar compromisso" }).click();
+
+    const editForm = page.locator("[data-event-edit-form]");
+    await expect(editForm).toBeVisible();
+    await editForm.getByLabel("Título").fill("Compromisso atualizado");
+    await editForm.getByLabel("Horário (opcional)").fill("09:30");
+    await editForm.getByLabel("Alvo").selectOption("00000000-0000-4000-8000-000000000053");
+    await editForm.getByLabel("Responsável planejado").selectOption(
+      "00000000-0000-4000-8000-000000000056",
+    );
+
+    const editRequest = page.waitForRequest((request) =>
+      request.url().includes("/rpc/edit_one_off_event"),
+    );
+    const editResponse = page.waitForResponse((response) =>
+      response.url().includes("/rpc/edit_one_off_event"),
+    );
+    await editForm.getByRole("button", { name: "Salvar alteração" }).click();
+    const editPayload = (await editRequest).postDataJSON();
+    expect(editPayload.p_event_id).toBe("00000000-0000-4000-8000-000000000101");
+    expect(editPayload.p_expected_revision_id).toBe("00000000-0000-4000-8000-000000000102");
+    expect(editPayload.p_title).toBe("Compromisso atualizado");
+    expect(editPayload.p_local_date).toBe("2026-08-02");
+    expect(editPayload.p_target_kind).toBe("child");
+    expect(editPayload.p_child_id).toBe("00000000-0000-4000-8000-000000000053");
+    expect(editPayload.p_scheduled_time).toBe("09:30");
+    expect(editPayload.p_requires_confirmation).toBe(true);
+    expect(editPayload.p_responsible_user_id).toBe("00000000-0000-4000-8000-000000000056");
+    const editBody = await (await editResponse).json();
+    expect(editBody).toMatchObject({ revision_number: 2 });
+
+    await expect(editForm).toHaveCount(0);
+    await expect(occurrence).toContainText("Compromisso atualizado");
+  });
+
+  test("keeps an Evento edit honest when another Adulto wins the revision", async ({ page }) => {
+    await page.clock.install({ time: "2026-08-01T22:00:00Z" });
+    await openAuthenticatedShell(page, { agenda: "event-conflict" });
+
+    const occurrence = page.locator('[data-tomorrow-list] [data-occurrence-source="event"]');
+    await occurrence.locator("[data-occurrence-details]").click();
+    await page.getByRole("button", { name: "Editar compromisso" }).click();
+    const editForm = page.locator("[data-event-edit-form]");
+    await editForm.getByLabel("Título").fill("Alteração concorrente");
+    await editForm.getByLabel("Horário (opcional)").fill("10:20");
+    await editForm.getByRole("button", { name: "Salvar alteração" }).click();
+
+    await expect(editForm).toBeVisible();
+    await expect(page.locator("[data-record-feedback]")).toContainText("Outra alteração chegou");
+    await expect(occurrence).not.toContainText("Alteração concorrente");
+  });
+
+  test("keeps the sheet actionable with 200% text and reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openAuthenticatedShell(page, { agenda: "dense" });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px";
+    });
+
+    const trigger = page.locator("[data-agenda-next] [data-occurrence-details]");
+    await trigger.click();
+    const sheet = page.locator("[data-occurrence-sheet]");
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Fechar detalhes" })).toBeVisible();
+    const sheetBox = await sheet.boundingBox();
+    expect(sheetBox?.width).toBeLessThanOrEqual(390);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+    const motion = await sheet.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        animationDuration: style.animationDuration,
+        transitionDuration: style.transitionDuration,
+      };
+    });
+    expect(Number.parseFloat(motion.animationDuration)).toBeLessThanOrEqual(0.01);
+    expect(Number.parseFloat(motion.transitionDuration)).toBeLessThanOrEqual(0.01);
+
+    await sheet.getByRole("button", { name: "Fechar detalhes" }).click();
+    await expect(trigger).toBeFocused();
+  });
+
+  test("keeps Configurações secondary and mounts only the focused catalog", async ({ page }) => {
+    await openAuthenticatedShell(page, { agenda: "ready" });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px";
+    });
+    await page.getByRole("button", { name: "Configurações" }).click();
+    await expect(page.locator("[data-settings-index]")).toBeVisible();
+    await expect(page.locator("[data-settings-group]")).toHaveCount(3);
+    await page.getByRole("button", { name: "Eventos avulsos" }).click();
+    await expect(page.locator("[data-events-settings]")).toBeVisible();
+    await expect(page.locator("[data-routines-settings]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Salvar", exact: true })).toBeVisible();
+    const controls = await page.locator("[data-events-settings] button, [data-events-settings] input, [data-events-settings] select").evaluateAll(
+      (elements) => elements.map((element) => {
+        const box = element.getBoundingClientRect();
+        return { height: box.height, width: box.width };
+      }),
+    );
+    expect(controls.length).toBeGreaterThan(4);
+    for (const control of controls) {
+      expect(control.width).toBeGreaterThanOrEqual(44);
+      expect(control.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   });
 
   test("opens one accessible bottom sheet and restores focus on Escape and Voltar", async ({ page }) => {
@@ -488,7 +757,7 @@ test.describe("authenticated mobile shell", () => {
 
     const trigger = page.locator("[data-agenda-next] [data-occurrence-details]");
     await expect(trigger).toHaveAccessibleName(
-      /06:010.*Levar a Criança.*Criança 1.*Programado.*Responsável: Adulto teste/,
+      /06:10.*Levar a Criança.*Criança 1.*Programado.*Responsável: Adulto teste/,
     );
     await trigger.click();
     const sheet = page.locator("[data-occurrence-sheet]");
@@ -496,6 +765,8 @@ test.describe("authenticated mobile shell", () => {
     await expect(sheet).toHaveAttribute("role", "dialog");
     await expect(sheet).toHaveAttribute("aria-modal", "true");
     await expect(sheet.getByRole("heading").first()).toBeFocused();
+    await expect(sheet.getByRole("heading").first()).toHaveText(/Levar a Criança/);
+    expect(await sheet.getByRole("heading").first().textContent()).toHaveLength(120);
     await expect(page.locator("[data-authenticated-shell]")).toHaveAttribute("inert", "");
     await expect(page.locator("[data-occurrence-sheet]")).toHaveCount(1);
 
@@ -514,6 +785,9 @@ test.describe("authenticated mobile shell", () => {
     page,
     context,
   }) => {
+    // Keep the fixture's household date aligned with the browser clock. This
+    // makes the cache truly same-day regardless of when CI runs the suite.
+    await page.clock.install({ time: "2026-08-01T22:00:00Z" });
     await openAuthenticatedShell(page, { agenda: "tomorrow" });
     await expect(page.locator("[data-tomorrow-inline]")).toBeVisible();
     await expect(page.locator("[data-tomorrow-list] [data-occurrence-key]")).toHaveCount(1);
@@ -522,6 +796,22 @@ test.describe("authenticated mobile shell", () => {
     await expect(page.locator('[data-agenda="offline"]')).toBeVisible();
     await expect(page.locator("[data-tomorrow-inline]")).toBeVisible();
     await expect(page.locator("[data-tomorrow-date]")).toHaveText("02/08");
+    await expect(page.locator("[data-agenda-operational-state]")).toContainText(
+      "ações bloqueadas",
+    );
+  });
+
+  test("labels a previous-day cache instead of renaming it as Hoje", async ({ page, context }) => {
+    await page.clock.install({ time: "2026-08-02T03:30:00Z" });
+    await openAuthenticatedShell(page, { agenda: "stale" });
+    await expect(page.locator('[data-agenda="ready"]')).toBeVisible();
+
+    await context.setOffline(true);
+    await expect(page.locator('[data-agenda="offline"] h2')).toHaveText("Registro em cache");
+    await expect(page.locator('[data-today-date][data-stale-day="true"]')).toHaveText(
+      "Dados de 01/08 — offline",
+    );
+    await expect(page.locator("[data-tomorrow-inline]")).toHaveCount(0);
     await expect(page.locator("[data-agenda-operational-state]")).toContainText(
       "ações bloqueadas",
     );

@@ -54,4 +54,7 @@ test("globals.css keeps system light/dark, 44px targets, and two-line titles", (
   assert.match(css, /-webkit-line-clamp:\s*2/);
   assert.match(css, /\.occurrence--owner-alert/);
   assert.match(css, /\[data-push-error\]/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(css, /safe-area-inset-bottom/);
+  assert.match(css, /safe-area-inset-top/);
 });

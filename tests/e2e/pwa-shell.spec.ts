@@ -1,15 +1,35 @@
 import { test, expect } from "@playwright/test";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+async function listExportedFiles(directory: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map((entry) => {
+      const path = join(directory, entry.name);
+      return entry.isDirectory() ? listExportedFiles(path) : Promise.resolve([path]);
+    }),
+  );
+  return files.flat();
+}
 
 test("without Supabase credentials, the app shows a clear config-missing state instead of a broken login", async ({
   page,
 }) => {
-  // This test is only meaningful when the build has no Supabase env vars.
-  // In CI the production build always includes them, so skip there.
-  test.skip(!!process.env.CI, "Supabase is configured in CI builds");
-
   await page.goto("/");
 
-  await expect(page.locator("[data-auth-config-missing]")).toBeVisible();
+  // This check is meaningful only for an intentionally unconfigured build.
+  // The same E2E suite also exercises the configured production build, so
+  // detect the build mode from the public UI rather than the test process env.
+  const configMissing = page.locator("[data-auth-config-missing]");
+  await expect(
+    page.locator("[data-auth-config-missing], [data-login-step], [data-authenticated-shell]"),
+  ).toBeVisible();
+  if (!(await configMissing.isVisible().catch(() => false))) {
+    test.skip(true, "Supabase is configured in this build");
+  }
+
+  await expect(configMissing).toBeVisible();
   await expect(page.locator("[data-login-step]")).toHaveCount(0);
 });
 
@@ -26,6 +46,23 @@ test("manifest is linked and installable metadata is present", async ({ page }) 
 
   expect(manifest.name).toBe("Combinado");
   expect(manifest.display).toBe("standalone");
+});
+
+test("static export does not contain private operational credentials", async () => {
+  const files = await listExportedFiles(join(process.cwd(), "out"));
+  const text = (
+    await Promise.all(files.map((file) => readFile(file, "utf8").catch(() => "")))
+  ).join("\n");
+  for (const marker of [
+    "PUSH_CRON_SECRET",
+    "VAPID_PRIVATE_KEY",
+    "SUPABASE_DB_URL",
+    "BACKUP_AGE_SECRET_KEY",
+    "GMAIL_APP_PASSWORD",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ]) {
+    expect(text, marker).not.toContain(marker);
+  }
 });
 
 test("service worker registers and precaches the app shell", async ({ page }) => {

@@ -580,7 +580,7 @@ export function OccurrenceRow({
           ) : null}
 
           {busy ? (
-            <span data-dose-registering role="status" className="occurrence__persisting">
+            <span data-record-registering role="status" className="occurrence__persisting">
               Registrando…
             </span>
           ) : null}
@@ -936,14 +936,14 @@ export function OccurrenceRow({
         ) : null}
 
         {feedback ? (
-          <p className="occurrence-sheet__feedback" data-dose-feedback role="status">
+          <p className="occurrence-sheet__feedback" data-record-feedback role="status">
             {feedback}
           </p>
         ) : null}
       </OccurrenceSheet>
 
       {feedback && !detailsOpen ? (
-        <p data-dose-feedback role="status">
+        <p data-record-feedback role="status">
           {feedback}
         </p>
       ) : null}
