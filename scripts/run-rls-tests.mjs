@@ -117,4 +117,5 @@ psql(join(root, "tests/sql/events.sql"));
 psql(join(root, "tests/sql/issue55_record_and_event_revisions.sql"));
 psql(join(root, "tests/sql/backup_status.sql"));
 psql(join(root, "tests/sql/ops_monitor.sql"));
-console.log("RLS + agenda snapshot + weekly routine create + weekly routine planning + household maintenance + medication dose + event + backup status + ops monitor tests OK");
+psql(join(root, "tests/sql/push_outbox_unique.sql"));
+console.log("RLS + agenda snapshot + weekly routine create + weekly routine planning + household maintenance + medication dose + event + backup status + ops monitor + push outbox unique tests OK");
