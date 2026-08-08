@@ -161,6 +161,8 @@ export function OccurrenceRow({
   const [eventChildren, setEventChildren] = useState<ChildRow[]>([]);
   const [, setTick] = useState(0);
   const detailsTriggerRef = useRef<HTMLButtonElement>(null);
+  const undoButtonRef = useRef<HTMLButtonElement>(null);
+  const pendingFocusUndoRef = useRef(false);
 
   const editingInProgress =
     busy ||
@@ -250,6 +252,16 @@ export function OccurrenceRow({
     return () => window.clearTimeout(t);
   }, [undoUntil]);
 
+  // After a Registro succeeds, the primary button is gone from this row on
+  // the next snapshot; hand focus to Desfazer instead of dropping it to body.
+  useEffect(() => {
+    if (!pendingFocusUndoRef.current) return;
+    pendingFocusUndoRef.current = false;
+    if (!showUndo) return;
+    const frame = window.requestAnimationFrame(() => undoButtonRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [occurrence.status, showUndo]);
+
   async function runConfirm(acknowledgeEarly: boolean) {
     if (!client || !writesAllowed) return;
     setEarlyPrompt(false);
@@ -263,6 +275,7 @@ export function OccurrenceRow({
         if (occurrence.source === "event") {
           const result = await completeOneOffEvent(client, occurrence.source_id);
           if (result.ok) {
+            pendingFocusUndoRef.current = true;
             await onChanged();
             setBusy(false);
             return;
@@ -282,6 +295,7 @@ export function OccurrenceRow({
         if (occurrence.source === "routine") {
           const result = await completeWeeklyRoutine(client, occurrence.source_id, occurrence.local_date);
           if (result.ok) {
+            pendingFocusUndoRef.current = true;
             await onChanged();
             setBusy(false);
             return;
@@ -311,6 +325,7 @@ export function OccurrenceRow({
         });
 
         if (result.ok) {
+          pendingFocusUndoRef.current = true;
           await onChanged();
           setBusy(false);
           return;
@@ -512,7 +527,6 @@ export function OccurrenceRow({
     (isConfirmableDose(occurrence, day) ||
       isConfirmableEvent(occurrence, day) ||
       isConfirmableRoutine(occurrence, day)) &&
-    !busy &&
     Boolean(client);
   const primaryActionLabel = occurrence.source === "event"
     ? "Concluir"
@@ -571,22 +585,18 @@ export function OccurrenceRow({
                 data-confirm-dose={occurrence.source === "medication" ? "true" : undefined}
                 data-complete-event={occurrence.source === "event" ? "true" : undefined}
                 data-complete-routine={occurrence.source === "routine" ? "true" : undefined}
+                data-record-registering={busy ? "true" : undefined}
                 disabled={!confirmable}
+                aria-busy={busy || undefined}
                 onClick={() => void handleConfirmClick()}
               >
-                {primaryActionLabel}
+                {busy ? "Registrando…" : primaryActionLabel}
               </button>
             )
           ) : null}
 
-          {busy ? (
-            <span data-record-registering role="status" className="occurrence__persisting">
-              Registrando…
-            </span>
-          ) : null}
-
           {reversibleEligible && client && !busy && showUndo ? (
-            <button type="button" data-undo-dose onClick={() => void handleReverse("undo")}>
+            <button type="button" ref={undoButtonRef} data-undo-dose onClick={() => void handleReverse("undo")}>
               Desfazer
             </button>
           ) : null}

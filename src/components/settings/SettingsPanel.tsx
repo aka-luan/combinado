@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { getSupabaseBrowserClient } from "@/lib/auth/supabase-client";
 import { signOut } from "@/lib/auth/session";
+import { Brand } from "@/components/shell/Brand";
 import { ChildrenSettings } from "@/components/household/ChildrenSettings";
 import { MedicationsSettings } from "@/components/household/MedicationsSettings";
 import { EventsSettings } from "@/components/household/EventsSettings";
@@ -49,10 +51,19 @@ export function SettingsPanel() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const hasVisitedSettings = useRef(location.kind !== "closed");
   const hasOwnedHistoryEntry = useRef(false);
+  // Set while "Fechar Configurações" is unwinding a multi-level visit (index
+  // then a screen): each popstate steps back once more until history lands
+  // on closed, so one close click always exits fully rather than one level.
+  const closingAllRef = useRef(false);
 
   useEffect(() => {
     const onHistoryChange = () => {
       const next = parseSettingsHash(window.location.hash);
+      if (closingAllRef.current && next.kind !== "closed") {
+        window.history.back();
+        return;
+      }
+      closingAllRef.current = false;
       setLocation(next);
       if (next.kind === "closed") hasOwnedHistoryEntry.current = false;
     };
@@ -71,6 +82,28 @@ export function SettingsPanel() {
     window.requestAnimationFrame(() => headingRef.current?.focus());
   }, [location]);
 
+  // Configurações is a full secondary surface (§6), not a header sidebar —
+  // it takes over the screen and makes Hoje inert underneath, matching the
+  // takeover the occurrence sheet already does.
+  useEffect(() => {
+    if (location.kind === "closed" || typeof document === "undefined") return;
+    const shell = document.querySelector<HTMLElement>("[data-authenticated-shell]");
+    const hadAriaHidden = shell?.hasAttribute("aria-hidden") ?? false;
+    const previousAriaHidden = shell ? shell.getAttribute("aria-hidden") : null;
+    shell?.setAttribute("inert", "");
+    shell?.setAttribute("aria-hidden", "true");
+    return () => {
+      if (!shell) return;
+      shell.removeAttribute("inert");
+      if (hadAriaHidden) {
+        if (previousAriaHidden === null) shell.removeAttribute("aria-hidden");
+        else shell.setAttribute("aria-hidden", previousAriaHidden);
+      } else {
+        shell.removeAttribute("aria-hidden");
+      }
+    };
+  }, [location.kind]);
+
   function openSettings() {
     if (location.kind !== "closed") {
       closeSettings();
@@ -83,6 +116,7 @@ export function SettingsPanel() {
 
   function closeSettings() {
     if (hasOwnedHistoryEntry.current) {
+      closingAllRef.current = true;
       window.history.back();
       return;
     }
@@ -134,33 +168,44 @@ export function SettingsPanel() {
         {location.kind === "closed" ? "Configurações" : "Fechar Configurações"}
       </button>
 
-      {location.kind !== "closed" ? (
-        <div
-          id="settings-content"
-          data-settings-content
-          data-settings-route={location.kind}
-          data-settings-screen={screen ?? undefined}
-        >
-          {location.kind === "index" ? (
-            <SettingsIndex
-              confirming={confirming}
-              headingRef={headingRef}
-              onConfirmLogout={() => void handleLogout()}
-              onNavigate={navigateToScreen}
-              onStartLogout={() => setConfirming(true)}
-              onCancelLogout={() => setConfirming(false)}
-            />
-          ) : (
-            <SettingsScreen
-              client={client}
-              headingRef={headingRef}
-              screen={location.screen}
-              writesAllowed={writesAllowed}
-              onBack={goBack}
-            />
-          )}
-        </div>
-      ) : null}
+      {location.kind !== "closed" && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              id="settings-content"
+              data-settings-content
+              data-settings-route={location.kind}
+              data-settings-screen={screen ?? undefined}
+            >
+              <div className="settings-overlay__header">
+                <Brand />
+                <button type="button" className="settings-overlay__close" onClick={closeSettings}>
+                  Fechar Configurações
+                </button>
+              </div>
+              <div className="settings-overlay__body">
+                {location.kind === "index" ? (
+                  <SettingsIndex
+                    confirming={confirming}
+                    headingRef={headingRef}
+                    onConfirmLogout={() => void handleLogout()}
+                    onNavigate={navigateToScreen}
+                    onStartLogout={() => setConfirming(true)}
+                    onCancelLogout={() => setConfirming(false)}
+                  />
+                ) : (
+                  <SettingsScreen
+                    client={client}
+                    headingRef={headingRef}
+                    screen={location.screen}
+                    writesAllowed={writesAllowed}
+                    onBack={goBack}
+                  />
+                )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
